@@ -172,7 +172,7 @@ export function downloadTemplate() {
     edges: [{ from: 1, to: 2, s: 'right', e: 'left', dashed: false, color: '' }]
   };
   const wb = buildWorkbook(demo);
-  XLSX.writeFile(wb, 'map-panel-shablon.xlsx');
+  XLSX.writeFile(wb, 'maps-panel-shablon.xlsx');
 }
 
 function buildWorkbook(p) {
