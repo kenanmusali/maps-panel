@@ -61,7 +61,7 @@ export const pdfsApi = {
   // Returns { groups, pdfs }
   list: () => jsonRequest('GET', '/api/pdfs'),
 
-  createGroup: (name) => jsonRequest('POST', '/api/pdfs/group', { name }),
+  createGroup: (name, parentId) => jsonRequest('POST', '/api/pdfs/group', { name, parentId: parentId ?? null }),
   renameGroup: (gid, name) => jsonRequest('PUT', `/api/pdfs/group/${gid}`, { name }),
   deleteGroup: (gid) => jsonRequest('DELETE', `/api/pdfs/group/${gid}`),
 

@@ -134,6 +134,32 @@ h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; }
 }
 .top-left, .top-right { display: flex; gap: 6px; align-items: center; }
 
+/* ---- topbar: collapse-all icon button + search toggle ---- */
+.icon-btn {
+  width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.15s var(--ease); flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-light); }
+
+.topbar-search { display: flex; align-items: center; gap: 6px; }
+.topbar-search input {
+  width: 0; opacity: 0; padding: 0; border: none;
+  transition: width 0.2s var(--ease), opacity 0.15s var(--ease), padding 0.2s var(--ease);
+  font-size: 13.5px; border-radius: var(--r-pill);
+  background: var(--surface-soft);
+}
+.topbar-search.open input {
+  width: 220px; opacity: 1; padding: 8px 14px;
+  border: 1px solid var(--border);
+}
+.topbar-search.open input:focus { border-color: var(--primary); box-shadow: var(--ring); outline: none; }
+@media (max-width: 560px) {
+  .topbar-search.open input { width: 130px; }
+}
+
 .pill-chip {
   background: transparent;
   padding: 8px 12px;
@@ -1065,6 +1091,16 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
   background: var(--bg-soft);
 }
 .group-body .process-item { padding: 12px 14px; }
+
+/* Nested (group-in-group) cards: subtle indent + connecting rail so the
+   hierarchy is legible without adding a separate tree widget. */
+.group-card.nested {
+  border-left: 2px solid var(--primary-light);
+}
+.group-card.nested .group-head { background: var(--surface); }
+.group-card.nested .group-name { font-size: 14px; }
+.group-body .group-card { margin-bottom: 8px; }
+.group-body .group-card:last-child { margin-bottom: 0; }
 
 /* Diagram/PDF row title + secondary name */
 .row-title { display: block; font-weight: 600; font-size: 14.5px; color: var(--text-primary); }

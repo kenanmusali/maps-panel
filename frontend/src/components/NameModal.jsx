@@ -2,6 +2,25 @@ import { useState, useRef } from 'react';
 import { X, Loader2 } from './icons.jsx';
 import { FileSpreadsheet, Download, FileJson } from 'lucide-react';
 
+// Flattens a flat groups array (with optional parentId) into depth-first
+// order, so a plain <select> can show nested groups with indentation.
+function orderedGroupOptions(groups) {
+  const pid = (g) => (g.parentId === undefined || g.parentId === null || g.parentId === 0)
+    ? null
+    : Number(g.parentId);
+  const out = [];
+  function walk(parentId, depth) {
+    groups
+      .filter(g => pid(g) === parentId)
+      .forEach(g => {
+        out.push({ g, depth });
+        walk(g.id, depth + 1);
+      });
+  }
+  walk(null, 0);
+  return out;
+}
+
 // Generic modal: heading + name field (+ optional subtitle + optional group select).
 // onSave({ name, subtitle, groupId }) may be async.
 // Optional Excel import: pass withImport + onImport(file, { groupId }) (async) and
@@ -122,7 +141,11 @@ export default function NameModal({
               <label>Qrup</label>
               <select value={groupId || ''} onChange={(e) => setGroupId(e.target.value)}>
                 {groups.length === 0 && <option value="">Qrup yoxdur</option>}
-                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {orderedGroupOptions(groups).map(({ g, depth }) => (
+                  <option key={g.id} value={g.id}>
+                    {'\u00A0\u00A0'.repeat(depth)}{depth > 0 ? '↳ ' : ''}{g.name}
+                  </option>
+                ))}
               </select>
             </div>
           )}

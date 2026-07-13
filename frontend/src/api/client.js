@@ -57,7 +57,7 @@ export const api = {
   unarchiveProcess: (id) => request('POST', `/api/processes/${id}/unarchive`),
 
   // Diagram groups
-  createGroup: (name) => request('POST', '/api/processes/group', { name }),
+  createGroup: (name, parentId) => request('POST', '/api/processes/group', { name, parentId: parentId ?? null }),
   renameGroup: (gid, name) => request('PUT', `/api/processes/group/${gid}`, { name }),
   deleteGroup: (gid) => request('DELETE', `/api/processes/group/${gid}`),
 

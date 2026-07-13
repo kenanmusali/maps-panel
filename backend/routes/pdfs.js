@@ -74,7 +74,13 @@ router.post('/group', requireAdmin, async (req, res, next) => {
     const name = String(req.body?.name || '').trim();
     if (!name) return res.status(400).json({ error: 'Qrup adi teleb olunur' });
     const idx = await readIndex();
-    const group = { id: nextId(idx.groups), name };
+
+    let parentId = req.body?.parentId != null ? Number(req.body.parentId) : null;
+    if (parentId && !idx.groups.some(g => Number(g.id) === parentId)) {
+      return res.status(400).json({ error: 'Valideyn qrup tapılmadı' });
+    }
+
+    const group = { id: nextId(idx.groups), name, parentId: parentId || null };
     idx.groups = [...idx.groups, group];
     await writeIndex(idx, `Create pdf group ${group.id}`);
     res.status(201).json(group);
@@ -99,16 +105,31 @@ router.delete('/group/:gid', requireAdmin, async (req, res, next) => {
   try {
     const gid = Number(req.params.gid);
     const idx = await readIndex();
-    const inGroup = idx.pdfs.filter(p => Number(p.groupId) === gid);
+
+    // Collect this group + every descendant subgroup (any depth).
+    function collectIds(rootId) {
+      const ids = [rootId];
+      let frontier = [rootId];
+      while (frontier.length) {
+        const children = idx.groups.filter(g => frontier.includes(Number(g.parentId)));
+        const childIds = children.map(g => Number(g.id));
+        ids.push(...childIds);
+        frontier = childIds;
+      }
+      return ids;
+    }
+    const allGroupIds = collectIds(gid);
+
+    const inGroup = idx.pdfs.filter(p => allGroupIds.includes(Number(p.groupId)));
     for (const p of inGroup) {
       await deleteBinary(pdfFilePathFiles(p.id), { message: `Delete pdf ${p.id} (group ${gid})` }).catch(() => {});
       await deleteBinary(pdfFilePathLegacy(p.id)).catch(() => {});
       await deleteBinary(pdfFilePathLegacy2(p.id)).catch(() => {});
     }
-    idx.pdfs = idx.pdfs.filter(p => Number(p.groupId) !== gid);
-    idx.groups = idx.groups.filter(g => Number(g.id) !== gid);
-    await writeIndex(idx, `Delete pdf group ${gid}`);
-    res.json({ ok: true, deletedPdfs: inGroup.length });
+    idx.pdfs = idx.pdfs.filter(p => !allGroupIds.includes(Number(p.groupId)));
+    idx.groups = idx.groups.filter(g => !allGroupIds.includes(Number(g.id)));
+    await writeIndex(idx, `Delete pdf group ${gid} (+ subgroups)`);
+    res.json({ ok: true, deletedPdfs: inGroup.length, deletedGroups: allGroupIds.length });
   } catch (e) { next(e); }
 });
 
