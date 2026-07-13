@@ -378,7 +378,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
       <div
         key={g.id}
         className={`group-card ${isOpen ? 'open' : ''} ${isGroupOver ? 'drag-over' : ''} ${depth > 0 ? 'nested' : ''}`}
-        style={depth > 0 ? { marginLeft: 18 } : undefined}
+        style={depth > 0 ? { marginLeft: 0, borderRadius: '12px' } : undefined}
       >
         <div
           className="group-head"
