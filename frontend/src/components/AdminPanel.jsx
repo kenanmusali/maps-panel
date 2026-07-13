@@ -424,32 +424,6 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
     e.dataTransfer.setData('text/plain', shape);
   }
 
-  // Renumber node IDs to a gap-free 1..N sequence. Numeric IDs keep their
-  // relative order (1,2,4,5 -> 1,2,3,4); any non-numeric IDs are appended
-  // after them. Edge from/to references are remapped so nothing breaks.
-  function renumberIds() {
-    if (!process.nodes.length) return;
-    if (!confirm('Bütün node ID-ləri 1-dən başlayaraq ardıcıl nömrələnəcək və boşluqlar doldurulacaq. Davam edilsin?')) return;
-    updateProcess(p => {
-      const ordered = [...p.nodes].sort((a, b) => {
-        const na = /^\d+$/.test(String(a.id)), nb = /^\d+$/.test(String(b.id));
-        if (na && nb) return Number(a.id) - Number(b.id);
-        if (na) return -1;
-        if (nb) return 1;
-        return 0;
-      });
-      const map = new Map();
-      ordered.forEach((n, i) => map.set(String(n.id), i + 1));
-      const nodes = p.nodes.map(n => ({ ...n, id: map.get(String(n.id)) }));
-      const edges = p.edges.map(e => ({
-        ...e,
-        from: map.has(String(e.from)) ? map.get(String(e.from)) : e.from,
-        to: map.has(String(e.to)) ? map.get(String(e.to)) : e.to,
-      }));
-      return { ...p, nodes, edges };
-    }, 'renumber-ids');
-  }
-
   return (
     <>
       {selectedNode && (
@@ -501,16 +475,6 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
             </button>
           );
         })}
-      </div>
-
-      <div className="node-id-organize">
-        <button type="button" className="btn" onClick={renumberIds}>
-          <ListOrdered size={14} /> <span>ID-ləri nizamla (boşluqları doldur)</span>
-        </button>
-        <div className="hint" style={{ marginTop: 8 }}>
-          Silinən node-lardan sonra qalan ID-ləri 1-dən başlayaraq yenidən ardıcıl
-          nömrələyir (məs. 1, 2, 4, 5 → 1, 2, 3, 4). Oxların bağlantıları da yenilənir.
-        </div>
       </div>
     </>
   );
@@ -621,3 +585,4 @@ function CanvasSection({ process, updateProcess }) {
     </>
   );
 }
+

@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { getFile, putFile } from '../services/github.js';
-import { tenantBase, tenantOf } from '../services/tenancy.js';
 
 const router = Router();
-const settingsPath = (base) => `${base}/settings.json`;
+const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
+const settingsPath = () => `${dataPath()}/settings.json`;
 
 const DEFAULTS = {
   org_title: 'ABŞERON LOGİSTİKA MƏRKƏZİ',
@@ -16,34 +16,33 @@ const DEFAULTS = {
 };
 
 function requireAdmin(req, res, next) {
-  if (req.user?.role !== 'admin' && req.user?.role !== 'superadmin') return res.status(403).json({ error: 'Admin only' });
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   next();
 }
 
-async function readSettings(base) {
-  const file = await getFile(settingsPath(base));
+async function readSettings() {
+  const file = await getFile(settingsPath());
   return { ...DEFAULTS, ...(file?.content || {}) };
 }
 
-// GET /api/settings — anyone logged in (scoped to their department)
-router.get('/', async (req, res, next) => {
+// GET /api/settings — anyone logged in
+router.get('/', async (_req, res, next) => {
   try {
-    res.json(await readSettings(tenantBase(tenantOf(req))));
+    res.json(await readSettings());
   } catch (e) { next(e); }
 });
 
 // PUT /api/settings — admin only; merges provided keys
 router.put('/', requireAdmin, async (req, res, next) => {
   try {
-    const base = tenantBase(tenantOf(req));
-    const current = await readSettings(base);
+    const current = await readSettings();
     const incoming = req.body || {};
-    const nextSettings = { ...current };
+    const next = { ...current };
     for (const k of Object.keys(DEFAULTS)) {
-      if (typeof incoming[k] === 'string') nextSettings[k] = incoming[k];
+      if (typeof incoming[k] === 'string') next[k] = incoming[k];
     }
-    await putFile(settingsPath(base), nextSettings, { message: 'Update settings' });
-    res.json(nextSettings);
+    await putFile(settingsPath(), next, { message: 'Update settings' });
+    res.json(next);
   } catch (e) { next(e); }
 });
 

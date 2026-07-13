@@ -1,22 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
-import { api, getToken, setToken, storeIdentity, clearIdentity, beat, track } from './api/client.js';
+import { api, getToken, setToken } from './api/client.js';
 
 import Login from './components/Login.jsx';
 import SectionsHub from './components/SectionsHub.jsx';
 import Home from './components/Home.jsx';
 import Diagram from './components/Diagram.jsx';
 import PdfList from './components/pdfs/PdfList.jsx';
-import SuperAdmin from './components/SuperAdmin.jsx';
 
 export default function App() {
-  // views: 'login' | 'hub' | 'diagrams' | 'pdfs' | 'diagram' | 'superadmin'
+  // views: 'login' | 'hub' | 'diagrams' | 'pdfs' | 'files' | 'diagram'
   const [view, setView] = useState('login');
   const [user, setUser] = useState(null);
   const [processId, setProcessId] = useState(null);
   const [focusNodeId, setFocusNodeId] = useState(null);
   const [bootChecking, setBootChecking] = useState(true);
+  // A diagram id parsed from a share link (?d=<id>&n=<nodeId>), pending until
+  // the user is authenticated. Kept in a ref so it survives re-renders.
   const pendingShare = useRef(null);
 
+  // Read the share-link params once, and strip them from the URL so a refresh
+  // doesn't keep forcing the same diagram open.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const d = params.get('d');
@@ -36,23 +39,24 @@ export default function App() {
     return true;
   }
 
-  function landingFor(role) {
-    return role === 'superadmin' ? 'superadmin' : 'hub';
-  }
-
   useEffect(() => {
     (async () => {
       const token = getToken();
-      if (!token) { setBootChecking(false); return; }
+      if (!token) {
+        setBootChecking(false);
+        return;
+      }
       try {
         const me = await api.me();
         setUser(me);
-        storeIdentity(me);
-        if (me.role === 'superadmin') setView('superadmin');
-        else if (!consumeShare()) setView('hub');
+        localStorage.setItem('role', me.role);
+        localStorage.setItem('username', me.username);
+        if (!consumeShare()) setView('hub');
       } catch (e) {
+        console.error(e);
         setToken(null);
-        clearIdentity();
+        localStorage.removeItem('role');
+        localStorage.removeItem('username');
       } finally {
         setBootChecking(false);
       }
@@ -62,15 +66,15 @@ export default function App() {
 
   function onLogin(data) {
     setUser(data);
-    storeIdentity(data);
-    if (data.role === 'superadmin') setView('superadmin');
-    else if (!consumeShare()) setView('hub');
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('username', data.username);
+    if (!consumeShare()) setView('hub');
   }
 
   function onLogout() {
-    api.presenceLeave();
     setToken(null);
-    clearIdentity();
+    localStorage.removeItem('role');
+    localStorage.removeItem('username');
     setUser(null);
     setProcessId(null);
     setView('login');
@@ -87,33 +91,38 @@ export default function App() {
     setView('diagram');
   }
 
-  function backToDiagrams() { setProcessId(null); setFocusNodeId(null); setView('diagrams'); }
-  function backToHub() { setProcessId(null); setFocusNodeId(null); setView('hub'); }
+  function backToDiagrams() {
+    setProcessId(null);
+    setFocusNodeId(null);
+    setView('diagrams');
+  }
 
-  /* ---------------- global presence heartbeat + view tracking ---------------- */
-  // The Diagram view manages its own richer heartbeat (with the open diagram),
-  // so the shell only beats for the non-diagram views.
-  useEffect(() => {
-    if (!user || view === 'login' || view === 'diagram') return;
-    const label = view; // hub | diagrams | pdfs | superadmin
-    beat(label, null, null);
-    track(`view.${view === 'hub' ? 'hub' : view === 'superadmin' ? 'hub' : view}`, null, null);
-    const t = setInterval(() => beat(label, null, null), 12000);
-    return () => clearInterval(t);
-  }, [view, user]);
+  function backToHub() {
+    setProcessId(null);
+    setFocusNodeId(null);
+    setView('hub');
+  }
 
-  useEffect(() => {
-    const leave = () => { try { navigator.sendBeacon; } catch {} api.presenceLeave(); };
-    window.addEventListener('beforeunload', leave);
-    return () => window.removeEventListener('beforeunload', leave);
-  }, []);
+  if (bootChecking) {
+    return <div className="boot-screen">Yüklənir...</div>;
+  }
 
-  if (bootChecking) return <div className="boot-screen">Yüklənir...</div>;
-  if (view === 'login') return <Login onLogin={onLogin} />;
-  if (view === 'superadmin') return <SuperAdmin onLogout={onLogout} />;
-  if (view === 'hub') return <SectionsHub onPick={pickSection} onLogout={onLogout} />;
-  if (view === 'diagrams') return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} />;
-  if (view === 'pdfs') return <PdfList onBack={backToHub} onLogout={onLogout} />;
+  if (view === 'login') {
+    return <Login onLogin={onLogin} />;
+  }
+
+  if (view === 'hub') {
+    return <SectionsHub onPick={pickSection} onLogout={onLogout} />;
+  }
+
+  if (view === 'diagrams') {
+    return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} />;
+  }
+
+  if (view === 'pdfs') {
+    return <PdfList onBack={backToHub} onLogout={onLogout} />;
+  }
+
   if (view === 'diagram') {
     return (
       <Diagram
@@ -125,5 +134,6 @@ export default function App() {
       />
     );
   }
+
   return null;
 }

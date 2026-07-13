@@ -6,7 +6,7 @@ import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, MonitorPlay, Clock
 } from './icons.jsx';
 import { LogoFull } from './Logo.jsx';
-import { api, setToken, beat, track } from '../api/client.js';
+import { api, setToken } from '../api/client.js';
 import DiagramCanvas, { edgePoints, polylinesCross } from './DiagramCanvas.jsx';
 import NodeModal from './NodeModal.jsx';
 import AdminPanel from './AdminPanel.jsx';
@@ -129,14 +129,6 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  // ---- Live collaboration (presence, edit-lock, live sync) ----
-  const username = localStorage.getItem('username') || '';
-  const [lockedBy, setLockedBy] = useState(null); // username of another editor, or null
-  const lastRevRef = useRef(0);
-  const holdingLockRef = useRef(false);
-  const lockedByRef = useRef(null);
-  useEffect(() => { lockedByRef.current = lockedBy; }, [lockedBy]);
-
   // View: fit-to-width (no horizontal scroll) vs classic (native size)
   const [fitWidth, setFitWidth] = useState(false);
   // Side panel open/close (edit mode)
@@ -242,112 +234,6 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [processId]);
-
-  /* ---------------- Live: presence heartbeat while viewing a diagram ------- */
-  useEffect(() => {
-    if (!processId) return;
-    const title = processRef.current?.title || '';
-    beat('diagram', processId, title);
-    track('view.diagram', processId, title);
-    const t = setInterval(() => beat('diagram', processId, processRef.current?.title || ''), 12000);
-    return () => clearInterval(t);
-    /* eslint-disable-next-line */
-  }, [processId]);
-
-  /* ---------------- Live sync: reload when another admin saves ------------- */
-  useEffect(() => {
-    if (!processId) return;
-    let stop = false;
-    const poll = async () => {
-      try {
-        const { revs } = await api.getRevs();
-        const rev = Number(revs?.[String(processId)] || 0);
-        if (stop) return;
-        if (!lastRevRef.current) { lastRevRef.current = rev; return; }
-        // Someone else saved: refresh, but never clobber our own edits.
-        if (rev > lastRevRef.current && !editModeRef.current && !dirtyRef.current) {
-          lastRevRef.current = rev;
-          load();
-        } else if (rev > lastRevRef.current) {
-          lastRevRef.current = rev;
-        }
-      } catch { /* ignore */ }
-    };
-    const t = setInterval(poll, 4000);
-    return () => { stop = true; clearInterval(t); };
-    /* eslint-disable-next-line */
-  }, [processId]);
-
-  /* ---------------- Edit-lock: acquire on enter, refresh, release --------- */
-  const acquireLock = useCallback(async () => {
-    try {
-      // Fresh pre-check first: if someone else already holds it, stop here.
-      const pre = await api.lockStatus(processId);
-      if (pre?.lock && pre.lock.owner !== username) {
-        lockedByRef.current = pre.lock.owner; setLockedBy(pre.lock.owner);
-        return false;
-      }
-      const r = await api.acquireLock(processId);
-      if (r && r.ok) { holdingLockRef.current = true; lockedByRef.current = null; setLockedBy(null); return true; }
-      const who = r?.lock?.owner || 'başqa admin';
-      lockedByRef.current = who; setLockedBy(who);
-      return false;
-    } catch (e) {
-      // 423 = held by another admin.
-      if (e.status === 423) {
-        const who = e.body?.lock?.owner || 'başqa admin';
-        lockedByRef.current = who; setLockedBy(who);
-        return false;
-      }
-      // Any other failure: we CANNOT confirm we own the lock, so fail CLOSED —
-      // never risk two admins editing at once. The user can retry.
-      lockedByRef.current = '__error__'; setLockedBy('__error__');
-      return false;
-    }
-  }, [processId, username]);
-
-  const releaseLock = useCallback(async () => {
-    if (!holdingLockRef.current) return;
-    holdingLockRef.current = false;
-    try { await api.releaseLock(processId); } catch { /* ignore */ }
-  }, [processId]);
-
-  // While editing, refresh the lock so it doesn't expire; also detect takeover.
-  useEffect(() => {
-    if (!editMode) return;
-    const t = setInterval(async () => {
-      try {
-        const r = await api.acquireLock(processId);
-        if (!r.ok) setLockedBy(r.lock?.owner || 'başqa admin');
-      } catch (e) {
-        if (e.status === 423) setLockedBy(e.body?.lock?.owner || 'başqa admin');
-      }
-    }, 10000);
-    return () => clearInterval(t);
-    /* eslint-disable-next-line */
-  }, [editMode, processId]);
-
-  // Not editing? Keep an eye on whether someone else is editing (banner).
-  useEffect(() => {
-    if (editMode || isViewer || !processId) return;
-    let stop = false;
-    const check = async () => {
-      try {
-        const { lock } = await api.lockStatus(processId);
-        if (!stop) setLockedBy(lock && lock.owner !== username ? lock.owner : null);
-      } catch { /* ignore */ }
-    };
-    check();
-    const t = setInterval(check, 5000);
-    return () => { stop = true; clearInterval(t); };
-    /* eslint-disable-next-line */
-  }, [editMode, processId, isViewer]);
-
-  // Release the lock + drop presence when leaving the diagram entirely.
-  useEffect(() => {
-    return () => { releaseLock(); };
-    /* eslint-disable-next-line */
-  }, [processId]);
 
   // When opened from the list with a focused node, open that node's popup.
   useEffect(() => {
@@ -533,8 +419,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
     if (!process || saving) return;
     setSaving(true);
     try {
-      const saved = await api.updateProcess(process.id, process);
-      if (saved && saved._rev) lastRevRef.current = saved._rev;
+      await api.updateProcess(process.id, process);
       localStorage.removeItem(DRAFT_KEY(processId));
       localStorage.removeItem(DRAFT_TS_KEY(processId));
       setDirty(false);
@@ -543,53 +428,27 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
     } catch (e) {
-      if (e.status === 423) {
-        setLockedBy((e.body && e.body.lock && e.body.lock.owner) || 'başqa admin');
-        alert(e.message || 'Bu diaqramı başqa admin redaktə edir.');
-      } else {
-        alert('Yadda saxlanılmadı: ' + e.message);
-      }
+      alert('Yadda saxlanılmadı: ' + e.message);
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleEdit() {
+  function toggleEdit() {
     if (isViewer) return;
-    if (editMode) {
-      // leaving edit mode → release the lock for others
-      setEditMode(false);
-      setSelection(null);
-      releaseLock();
-      return;
-    }
-    // entering edit mode → must hold the live lock first
-    const ok = await acquireLock();
-    if (!ok) {
-      if (lockedByRef.current === '__error__') {
-        alert('Redaktə kilidini yoxlamaq mümkün olmadı. Zəhmət olmasa bir azdan yenidən cəhd edin.');
-      } else {
-        alert(`Bu diaqramı hazırda ${lockedByRef.current || 'başqa admin'} redaktə edir. Onlar bitirib dərc edənə (yadda saxlayana) qədər gözləyin.`);
-      }
-      return;
-    }
-    setPanelOpen(true);
-    setEditMode(true);
+    setEditMode(prev => {
+      const next = !prev;
+      if (next) setPanelOpen(true); // entering edit → editor panel opens right away
+      return next;
+    });
     setSelection(null);
   }
 
   function logout() {
-    releaseLock();
-    api.presenceLeave();
     setToken(null);
     localStorage.removeItem('role');
     localStorage.removeItem('username');
     onLogout();
-  }
-
-  function handleBack() {
-    releaseLock();
-    onBack();
   }
 
   const onNodeClick = useCallback((nodeId, rect, menu = true, opts = {}) => {
@@ -612,11 +471,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
     setSelection({ kind: 'node', id: nodeId, menu: menu !== false });
     setModalAnchorRect(rect || null);
     setInteracting(false);
-    if (!editModeRef.current && menu !== false) {
-      const n = (processRef.current?.nodes || []).find(x => String(x.id) === String(nodeId));
-      track('click.node', processId, n?.title || n?.label || `node ${nodeId}`);
-    }
-  }, [processId]);
+  }, []);
 
   /** Marquee/rubber-band select: replace selection with everything in the box. */
   const onMarqueeSelect = useCallback((ids) => {
@@ -1160,7 +1015,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
     <>
       <div className={`topbar ${presenting ? 'is-hidden' : ''}`}>
         <div className="top-left">
-          <button className="pill-chip back-chip" onClick={handleBack}>
+          <button className="pill-chip back-chip" onClick={onBack}>
             <ChevronLeft size={16} />
             <span className="label">{process?.title || '...'}</span>
           </button>
@@ -1272,22 +1127,12 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
         </div>
       )}
 
-      {lockedBy && lockedBy !== '__error__' && !presenting && (
-        <div className="lock-banner">
-          <span className="lock-banner-icon"><Clock size={16} /></span>
-          <span className="lock-banner-text">
-            <b>{lockedBy}</b> hazırda bu diaqramı redaktə edir — dəyişikliklər canlı yenilənir.
-            {!editMode && ' Onlar bitirənə qədər redaktə mümkün deyil.'}
-          </span>
-        </div>
-      )}
-
       <div className={`diagram-wrap ${editMode ? 'edit-mode' : ''} ${presenting ? 'presenting' : ''}`}>
         <div className="diagram-main" style={themeVars(process)}>
           <div
             className={`diagram-container ${fitWidth && !editMode ? 'fit' : ''}`}
             ref={containerRef}
-            style={!isViewer && editMode && panelOpen ? { paddingTop: navbarH - 60 } : undefined}
+            style={!isViewer && editMode && panelOpen ? { paddingTop: navbarH - 60, paddingRight: sidebarOpen ? 416 : undefined } : undefined}
           >
             {loading && (
               <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>

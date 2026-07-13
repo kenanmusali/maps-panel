@@ -436,11 +436,14 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
           <Icon name={node.icon || 'Square'} size={15} /> Node #{node.id}
           <span className={`type-badge ${shape} s-${style}`}>{SHAPE_LABEL[shape]} · {STYLE_LABEL[style]}</span>
         </h4>
-        <div className="field-row col">
-          <label>Forma</label>
-          <select value={shape} onChange={e => setShapeStyle(e.target.value, style)}>
-            {SHAPES.map(s => <option key={s} value={s}>{SHAPE_LABEL[s]}</option>)}
-          </select>
+        <div className="field-row two">
+          <div><label>ID</label><input defaultValue={node.id} onBlur={e => changeId(e.target.value)} /></div>
+          <div>
+            <label>Forma</label>
+            <select value={shape} onChange={e => setShapeStyle(e.target.value, style)}>
+              {SHAPES.map(s => <option key={s} value={s}>{SHAPE_LABEL[s]}</option>)}
+            </select>
+          </div>
         </div>
         <div className="field-row col">
           <label>Sərhəd stili</label>
@@ -483,10 +486,6 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
       </MenuItem>
 
       <MenuItem pid="text" icon={<Type size={14} />} label="Mətn" openItem={openItem} setOpenItem={setOpenItem} side={side}>
-        <div className="field-row col">
-          <label>ID</label>
-          <input key={node.id} defaultValue={node.id} onBlur={e => changeId(e.target.value)} />
-        </div>
         <div className="field-row col">
           <label>Mətn</label>
           <textarea rows={3} value={node.text} onChange={e => patchText(e.target.value)} />

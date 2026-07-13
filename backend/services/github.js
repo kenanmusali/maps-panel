@@ -85,30 +85,6 @@ async function localDelete(p) {
   }
 }
 
-// List JSON files in a directory (used by the real-time fallback store so each
-// presence/lock entry can be its own file — no shared-file write conflicts).
-export async function listDir(p) {
-  if (hasGithubConfig() && isVercel) {
-    try {
-      const { GITHUB_BRANCH } = cfg();
-      const res = await fetch(`${urlFor(p)}?ref=${encodeURIComponent(GITHUB_BRANCH)}`, { headers: headers() });
-      if (res.ok) {
-        const arr = await res.json();
-        if (Array.isArray(arr)) return arr.filter(x => x.type === 'file').map(x => x.name);
-      }
-    } catch { /* fall through to local */ }
-    return [];
-  }
-  const names = new Set();
-  for (const dir of [LOCAL_DATA_DIR, DEFAULT_DATA_DIR]) {
-    try {
-      const entries = await fs.readdir(path.join(dir, p));
-      entries.forEach(n => names.add(n));
-    } catch { /* dir may not exist */ }
-  }
-  return [...names];
-}
-
 export async function getFile(p) {
   // Locally, the project `data/` folder is the source of truth.
   if (!isVercel) {
