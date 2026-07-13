@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "Services": {
+  "services": {
     "frontend": {
       "root": "frontend",
       "routePrefix": "/",
