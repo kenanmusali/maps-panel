@@ -3,7 +3,7 @@ import { LogoFull } from './Logo.jsx';
 import {
   Search, LogOut, Plus, Loader2, Trash2, ChevronLeft,
   ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown,
-  Folder, FolderOpen, FolderPlus, Pencil, Edit3, GripVertical
+  Folder, FolderOpen, FolderPlus, Pencil, Edit3, GripVertical, Save, Check
 } from './icons.jsx';
 import { Archive, ArchiveRestore } from 'lucide-react';
 import { api, setToken } from '../api/client.js';
@@ -49,6 +49,29 @@ export default function Home({ onOpen, onLogout, onBack }) {
   const [pendingArchive, setPendingArchive] = useState(null); // process id awaiting confirm
   const searchInputRef = useRef(null);
 
+  // ---- staged (unsaved) folder edits ----
+  // Folder create/rename/move/delete/reorder are applied to local state only.
+  // pristineGroupsRef holds the last-saved-from-server snapshot so "Save All"
+  // can diff against it and send only what actually changed.
+  const pristineGroupsRef = useRef([]);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const tempIdRef = useRef(-1);
+  function nextTempId() { return tempIdRef.current--; }
+  function isTempId(id) { return typeof id === 'number' && id < 0; }
+
+  // warn before leaving the tab with unsaved folder changes
+  useEffect(() => {
+    function onBeforeUnload(e) {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty]);
+
   // ---- drag & drop ordering ----
   const groupDrag = useRef(null);          // gid being dragged
   const [groupOver, setGroupOver] = useState(null);
@@ -88,6 +111,9 @@ export default function Home({ onOpen, onLogout, onBack }) {
         gs.forEach(g => { if (!(g.id in o)) o[g.id] = false; });
         return o;
       });
+      pristineGroupsRef.current = gs.map(g => ({ id: g.id, name: g.name, parentId: normPid(g) }));
+      setDirty(false);
+      setSaveError('');
     } catch (e) {
       setError(e.message);
       if (e.status === 401) onLogout();
@@ -148,37 +174,94 @@ export default function Home({ onOpen, onLogout, onBack }) {
   }
 
   /* ---------- drag & drop: folders ---------- */
+  const [draggingGroupId, setDraggingGroupId] = useState(null);
+
+  function collectDescendantGroupIds(gid, groupList) {
+    const ids = [gid];
+    let frontier = [gid];
+    while (frontier.length) {
+      const kids = groupList.filter(x => frontier.includes(normPid(x)));
+      const kidIds = kids.map(x => x.id);
+      ids.push(...kidIds);
+      frontier = kidIds;
+    }
+    return ids;
+  }
+
   function onGroupDragStart(e, gid) {
     if (isViewer) return;
     groupDrag.current = gid;
+    setDraggingGroupId(gid);
     e.dataTransfer.effectAllowed = 'move';
   }
   function onGroupDragOver(e, gid) {
     if (groupDrag.current == null) return;
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     if (groupOver !== gid) setGroupOver(gid);
   }
-  async function onGroupDrop(e, gid) {
+  function onGroupDrop(e, gid) {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = groupDrag.current;
+    groupDrag.current = null;
+    setDraggingGroupId(null);
+    setGroupOver(null);
+    if (from == null || from === gid) return;
+    const fromG = groups.find(g => g.id === from);
+    const toG = groups.find(g => g.id === gid);
+    if (!fromG || !toG) return;
+
+    if (normPid(fromG) === normPid(toG)) {
+      // same parent -> just reorder these siblings
+      const order = groups.map(g => g.id);
+      const fi = order.indexOf(from);
+      const ti = order.indexOf(gid);
+      if (fi < 0 || ti < 0) return;
+      order.splice(ti, 0, order.splice(fi, 1)[0]);
+      const next = order.map(id => groups.find(g => g.id === id));
+      setGroups(next);
+      setDirty(true);
+      return;
+    }
+
+    // different parent -> dragging this folder onto another folder nests it
+    // inside that folder. Anything already inside `fromG` (subgroups and
+    // diagrams) stays linked to it by id, so it all moves along together.
+    const descendantIds = collectDescendantGroupIds(from, groups);
+    if (descendantIds.includes(toG.id)) {
+      alert('Qrupu öz alt qrupunun içinə köçürmək olmaz.');
+      return;
+    }
+    setGroups(prev => prev.map(g => g.id === from ? { ...g, parentId: toG.id } : g));
+    setExpanded(prev => ({ ...prev, [toG.id]: true }));
+    setDirty(true);
+  }
+  function onGroupDragEnd() { groupDrag.current = null; setDraggingGroupId(null); setGroupOver(null); }
+
+  // Dropping a dragged folder on this zone (shown only while dragging a
+  // nested folder) moves it back out to the top level.
+  function onRootDragOver(e) {
+    if (groupDrag.current == null) return;
+    const fromG = groups.find(g => g.id === groupDrag.current);
+    if (!fromG || normPid(fromG) === null) return; // already top-level
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (groupOver !== '__root__') setGroupOver('__root__');
+  }
+  function onRootDrop(e) {
     e.preventDefault();
     const from = groupDrag.current;
     groupDrag.current = null;
+    setDraggingGroupId(null);
     setGroupOver(null);
-    if (from == null || from === gid) return;
-    // only reorder within the same parent
+    if (from == null) return;
     const fromG = groups.find(g => g.id === from);
-    const toG = groups.find(g => g.id === gid);
-    if (!fromG || !toG || normPid(fromG) !== normPid(toG)) return;
-    const order = groups.map(g => g.id);
-    const fi = order.indexOf(from);
-    const ti = order.indexOf(gid);
-    if (fi < 0 || ti < 0) return;
-    order.splice(ti, 0, order.splice(fi, 1)[0]);
-    const next = order.map(id => groups.find(g => g.id === id));
-    setGroups(next); // optimistic
-    try { await api.reorderGroups(order); } catch { load(); }
+    if (!fromG || normPid(fromG) === null) return;
+    setGroups(prev => prev.map(g => g.id === from ? { ...g, parentId: null } : g));
+    setDirty(true);
   }
-  function onGroupDragEnd() { groupDrag.current = null; setGroupOver(null); }
 
   /* ---------- drag & drop: items inside a folder ---------- */
   function onItemDragStart(e, gid, id) {
@@ -222,20 +305,22 @@ export default function Home({ onOpen, onLogout, onBack }) {
   }
   function onItemDragEnd() { itemDrag.current = null; setItemOver(null); }
 
-  /* ---------- group actions ---------- */
-  async function saveGroupCreate({ name }) {
+  /* ---------- group actions (staged locally, sent on Save All) ---------- */
+  function saveGroupCreate({ name }) {
     const parentId = modal?.parentId ?? null;
-    const g = await api.createGroup(name, parentId);
-    setExpanded(prev => ({ ...prev, [g.id]: true }));
+    const tempId = nextTempId();
+    setGroups(prev => [...prev, { id: tempId, name, parentId: parentId || null }]);
+    setExpanded(prev => ({ ...prev, [tempId]: true }));
     setModal(null);
-    await load();
+    setDirty(true);
   }
-  async function saveGroupRename({ name }) {
-    await api.renameGroup(modal.group.id, name);
+  function saveGroupRename({ name }) {
+    const gid = modal.group.id;
+    setGroups(prev => prev.map(g => g.id === gid ? { ...g, name } : g));
     setModal(null);
-    await load();
+    setDirty(true);
   }
-  async function deleteGroup(g) {
+  function deleteGroup(g) {
     const count = itemsOfGroup(g.id).length;
     const subCount = childGroupsOf(g.id).length;
     let msg = `"${g.name}" qrupunu silmək istəyirsiniz?`;
@@ -243,13 +328,78 @@ export default function Home({ onOpen, onLogout, onBack }) {
       msg = `"${g.name}" qrupunu`
         + (subCount ? ` və ${subCount} alt qrupunu` : '')
         + (count ? ` və içindəki ${count} diaqramı` : '')
-        + ` silmək istəyirsiniz? Geri alına bilməz.`;
+        + ` silmək istəyirsiniz? "Yadda saxla"ya basana qədər tətbiq olunmayacaq.`;
     }
     if (!confirm(msg)) return;
+    const allIds = collectDescendantGroupIds(g.id, groups);
+    setGroups(prev => prev.filter(x => !allIds.includes(x.id)));
+    setProcesses(prev => prev.filter(p => !allIds.includes(Number(p.groupId))));
+    setDirty(true);
+  }
+
+  /* ---------- flush every staged folder change to the backend ---------- */
+  async function saveAll() {
+    if (!dirty || saving) return;
+    setSaving(true);
+    setSaveError('');
     try {
-      await api.deleteGroup(g.id);
+      const idMap = new Map(); // tempId -> real id
+      const resolve = (id) => (isTempId(id) && idMap.has(id)) ? idMap.get(id) : id;
+
+      // 1) create brand-new groups, parents before children, so a new
+      //    subgroup's parentId (possibly itself a temp id) can be resolved.
+      let remaining = groups.filter(g => isTempId(g.id));
+      let guard = 0;
+      while (remaining.length && guard++ < 50) {
+        const ready = remaining.filter(g => g.parentId == null || !isTempId(g.parentId) || idMap.has(g.parentId));
+        if (!ready.length) break; // shouldn't happen, safety valve
+        for (const g of ready) {
+          const parentId = g.parentId == null ? null : resolve(g.parentId);
+          const created = await api.createGroup(g.name, parentId);
+          idMap.set(g.id, created.id);
+        }
+        remaining = remaining.filter(g => !idMap.has(g.id));
+      }
+
+      // 2) existing groups: rename / move as needed
+      const pristineById = new Map(pristineGroupsRef.current.map(g => [g.id, g]));
+      for (const g of groups) {
+        if (isTempId(g.id)) continue;
+        const before = pristineById.get(g.id);
+        if (!before) continue;
+        if (before.name !== g.name) {
+          await api.renameGroup(g.id, g.name);
+        }
+        const newParentId = g.parentId == null ? null : resolve(g.parentId);
+        if (before.parentId !== newParentId) {
+          await api.moveGroup(g.id, newParentId);
+        }
+      }
+
+      // 3) deleted groups — only call delete on the topmost deleted group in
+      //    each removed subtree (backend cascades to subgroups + diagrams).
+      const currentIds = new Set(groups.filter(g => !isTempId(g.id)).map(g => g.id));
+      const deletedIds = pristineGroupsRef.current.filter(g => !currentIds.has(g.id)).map(g => g.id);
+      const deletedSet = new Set(deletedIds);
+      const deletedRoots = deletedIds.filter(id => {
+        const g = pristineById.get(id);
+        return !g.parentId || !deletedSet.has(g.parentId);
+      });
+      for (const gid of deletedRoots) {
+        await api.deleteGroup(gid);
+      }
+
+      // 4) final sibling order — send the fully-resolved current order so
+      //    display order matches exactly what was arranged locally.
+      const finalOrder = groups.filter(g => !isTempId(g.id) || idMap.has(g.id)).map(g => resolve(g.id));
+      await api.reorderGroups(finalOrder);
+
       await load();
-    } catch (e) { alert('Silinə bilmədi: ' + e.message); }
+    } catch (e) {
+      setSaveError(e.message || 'Yadda saxlanmadı');
+    } finally {
+      setSaving(false);
+    }
   }
 
   /* ---------- diagram actions ---------- */
@@ -373,12 +523,15 @@ export default function Home({ onOpen, onLogout, onBack }) {
     const dndOn = !isViewer && !q;
     const folderNo = groupNumber(g);
     const isGroupOver = groupOver === g.id && groupDrag.current !== g.id;
+    const draggingG = draggingGroupId != null ? groups.find(x => x.id === draggingGroupId) : null;
+    const isNestTarget = isGroupOver && draggingG && normPid(draggingG) !== normPid(g);
 
     return (
       <div
         key={g.id}
-        className={`group-card ${isOpen ? 'open' : ''} ${isGroupOver ? 'drag-over' : ''} ${depth > 0 ? 'nested' : ''}`}
+        className={`group-card ${isOpen ? 'open' : ''} ${isNestTarget ? 'drag-nest' : (isGroupOver ? 'drag-over' : '')} ${depth > 0 ? 'nested' : ''}`}
         style={depth > 0 ? { marginLeft: 0, borderRadius: '12px' } : undefined}
+        title={isNestTarget ? `"${draggingG.name}" bura köçürüləcək` : undefined}
       >
         <div
           className="group-head"
@@ -406,7 +559,9 @@ export default function Home({ onOpen, onLogout, onBack }) {
 
           {!isViewer && (
             <span className="group-actions" onClick={e => e.stopPropagation()}>
-              <button className="group-act-btn" title="Diaqram əlavə et"
+              <button className="group-act-btn" title={isTempId(g.id)
+                  ? 'Əvvəlcə qrupu "Yadda saxla" ilə saxlayın' : 'Diaqram əlavə et'}
+                disabled={isTempId(g.id)}
                 onClick={() => setModal({ type: 'diagram-create', groupId: g.id })}>
                 <Plus size={16} />
               </button>
@@ -545,11 +700,27 @@ export default function Home({ onOpen, onLogout, onBack }) {
               {allOpen ? <ChevronsDownUp size={17} /> : <ChevronsUpDown size={17} />}
             </button>
           )}
+          {!isViewer && (
+            <button
+              className={`icon-btn save-all-btn ${dirty ? 'dirty' : ''}`}
+              title={dirty ? 'Yadda saxlanmamış dəyişikliklər var' : 'Bütün dəyişikliklər saxlanılıb'}
+              onClick={saveAll}
+              disabled={!dirty || saving}
+            >
+              {saving ? <Loader2 size={17} className="spin" /> : (dirty ? <Save size={17} /> : <Check size={17} />)}
+              <span>{saving ? 'Saxlanılır...' : (dirty ? 'Hamısını yadda saxla' : 'Saxlanılıb')}</span>
+            </button>
+          )}
           <button className="logout-btn" onClick={logout}>
             <LogOut size={16} /><span>Çıxış</span>
           </button>
         </div>
       </div>
+      {saveError && (
+        <div className="empty-state error" style={{ margin: '8px 24px 0' }}>
+          Yadda saxlanmadı: {saveError}
+        </div>
+      )}
       <br />
       <div className="home-wrap">
         <LogoFull size="large" />
@@ -575,6 +746,16 @@ export default function Home({ onOpen, onLogout, onBack }) {
               <div className="num"><FolderPlus size={20} /></div>
               <div className="label">Yeni qrup yarat</div>
             </button>
+          )}
+
+          {!isViewer && draggingGroupId != null && normPid(groups.find(g => g.id === draggingGroupId) || {}) !== null && (
+            <div
+              className={`root-drop-zone ${groupOver === '__root__' ? 'drag-over' : ''}`}
+              onDragOver={onRootDragOver}
+              onDrop={onRootDrop}
+            >
+              Bura burax — kök səviyyəyə (əsas siyahıya) köçür
+            </div>
           )}
 
           {!loading && !error && childGroupsOf(null).map((g) => renderGroup(g, 0))}
@@ -634,7 +815,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
       )}
       {modal?.type === 'diagram-create' && (
         <NameModal heading="Yeni diaqram" nameLabel="Diaqram adı" withSubtitle
-          withGroup groups={groups} groupId0={modal.groupId}
+          withGroup groups={groups.filter(g => !isTempId(g.id))} groupId0={modal.groupId}
           namePlaceholder="Əsas ad" subtitlePlaceholder="Qısa ikinci ad (məcburi deyil)"
           saveLabel="Yarat və aç"
           withImport onImport={importDiagramExcel} onImportJson={importDiagramJson} onTemplate={downloadTemplate}
@@ -642,7 +823,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
       )}
       {modal?.type === 'diagram-edit' && (
         <NameModal heading="Diaqramı redaktə et" nameLabel="Diaqram adı" withSubtitle
-          withGroup groups={groups} groupId0={modal.proc.groupId}
+          withGroup groups={groups.filter(g => !isTempId(g.id))} groupId0={modal.proc.groupId}
           name0={modal.proc.title || ''} subtitle0={modal.proc.subtitle || ''}
           onClose={() => setModal(null)} onSave={saveDiagramEdit} />
       )}
