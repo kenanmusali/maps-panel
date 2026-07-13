@@ -10,7 +10,7 @@ import { diagnose } from './services/github.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
+ 
 // CORS
 const allowed = (process.env.CORS_ORIGIN || '*')
   .split(',')
