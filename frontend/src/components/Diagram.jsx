@@ -1279,7 +1279,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
           </button>
 
           <label className="present-speed" title="Hər node üçün müddət">
-            <Clock size={15} />
+            <Clock size={20} />
             <input
               type="range"
               min={1}
