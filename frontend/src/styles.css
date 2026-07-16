@@ -2026,9 +2026,9 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 12px 12px 14px;
+  padding: 15px;
   border-bottom: 1px solid #eef0f4;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
   flex: 0 0 auto;
 }
@@ -2109,7 +2109,7 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
 }
 .ai-msg.user { align-self: flex-end; }
 .ai-msg.user .ai-msg-body {
-  background: #4f46e5; color: #fff;
+  background: var(--primary); color: #fff;
   border-bottom-right-radius: 4px;
 }
 .ai-msg.assistant { align-self: flex-start; }
@@ -2196,10 +2196,10 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
 .ai-input textarea:focus { border-color: #8b5cf6; }
 .ai-send {
   flex: 0 0 auto;
-  width: 38px;
+  width: 45px;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
   display: grid;
   place-items: center;
