@@ -25,6 +25,27 @@ function hasGithubConfig() {
   return !!(GITHUB_TOKEN && GITHUB_OWNER && GITHUB_REPO);
 }
 
+// Builds { message, author } for a commit made by a specific panel admin.
+// The GitHub push always happens under the GITHUB_TOKEN's identity (that's
+// who "committed" it), but we can additionally set a custom "author" on the
+// commit so the panel username shows up next to the change — e.g. the
+// commit message becomes "Update process 3 (by admin_2)" and the commit's
+// author name/email is set to that admin. GitHub will only link it to a
+// profile picture if the email matches a real GitHub account; otherwise it
+// just shows as plain text, which is still enough to tell who did it.
+// Usage: putFile(path, content, attribution(req.user, 'Update process 3'))
+export function attribution(user, message) {
+  const username = user?.username;
+  if (!username) return { message };
+  return {
+    message: `${message} (by ${username})`,
+    author: {
+      name: username,
+      email: `${username}@map-panel.local`
+    }
+  };
+}
+
 function headers() {
   const { GITHUB_TOKEN } = cfg();
   return {
@@ -115,7 +136,7 @@ export async function getFile(p) {
   }
 }
 
-export async function putFile(p, contentObject, { message, sha } = {}) {
+export async function putFile(p, contentObject, { message, sha, author } = {}) {
   // Always keep the local `data/` folder in sync
   await localPut(p, contentObject).catch(() => {});
 
@@ -138,6 +159,11 @@ export async function putFile(p, contentObject, { message, sha } = {}) {
       content,
       branch: GITHUB_BRANCH
     };
+
+    if (author) {
+      body.author = author;
+      body.committer = author;
+    }
 
     if (sha && sha !== 'local') body.sha = sha;
 
@@ -165,7 +191,7 @@ export async function putFile(p, contentObject, { message, sha } = {}) {
   }
 }
 
-export async function deleteFile(p, { message } = {}) {
+export async function deleteFile(p, { message, author } = {}) {
   // Always remove the local mirror first
   await localDelete(p);
 
@@ -182,7 +208,8 @@ export async function deleteFile(p, { message } = {}) {
       body: JSON.stringify({
         message: message || `Delete ${p}`,
         sha,
-        branch: GITHUB_BRANCH
+        branch: GITHUB_BRANCH,
+        ...(author ? { author, committer: author } : {})
       })
     });
     if (!res.ok) throw new Error(await res.text());
@@ -273,7 +300,7 @@ export async function getBinary(p) {
   }
 }
 
-export async function putBinary(p, buffer, { message } = {}) {
+export async function putBinary(p, buffer, { message, author } = {}) {
   // Always mirror to local store too — keeps things working offline / on token error
   await localPutBinary(p, buffer);
 
@@ -288,6 +315,7 @@ export async function putBinary(p, buffer, { message } = {}) {
       branch: GITHUB_BRANCH
     };
     if (sha) body.sha = sha;
+    if (author) { body.author = author; body.committer = author; }
 
     const res = await fetch(urlFor(p), {
       method: 'PUT',
@@ -307,7 +335,7 @@ export async function putBinary(p, buffer, { message } = {}) {
   }
 }
 
-export async function deleteBinary(p, { message } = {}) {
+export async function deleteBinary(p, { message, author } = {}) {
   await localDeleteBinary(p);
 
   if (!hasGithubConfig()) return { ok: true };
@@ -323,7 +351,8 @@ export async function deleteBinary(p, { message } = {}) {
       body: JSON.stringify({
         message: message || `Delete ${p}`,
         sha,
-        branch: GITHUB_BRANCH
+        branch: GITHUB_BRANCH,
+        ...(author ? { author, committer: author } : {})
       })
     });
     if (!res.ok) throw new Error(await res.text());

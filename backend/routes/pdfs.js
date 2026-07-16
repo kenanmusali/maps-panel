@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getFile, putFile, deleteFile, getBinary, putBinary, deleteBinary } from '../services/github.js';
+import { getFile, putFile, deleteFile, getBinary, putBinary, deleteBinary, attribution } from '../services/github.js';
 
 const router = Router();
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
@@ -16,8 +16,10 @@ async function readArchive() {
   const c = file ? file.content : null;
   return (c && Array.isArray(c.items)) ? c : { items: [] };
 }
-async function writeArchive(content, message) {
-  return putFile(pdfArchivePath(), content, { message });
+// `user` is the logged-in panel admin (req.user) — gets stamped onto the commit
+// so GitHub shows who made the change instead of just the token owner.
+async function writeArchive(content, message, user) {
+  return putFile(pdfArchivePath(), content, attribution(user, message));
 }
 
 function ensureGroups(idx) {
@@ -44,8 +46,8 @@ async function readIndex() {
   return idx;
 }
 
-async function writeIndex(content, message) {
-  return putFile(pdfIndexPath(), content, { message });
+async function writeIndex(content, message, user) {
+  return putFile(pdfIndexPath(), content, attribution(user, message));
 }
 
 function nextId(list) {
@@ -63,7 +65,7 @@ router.get('/', async (_req, res, next) => {
   try {
     const file = await getFile(pdfIndexPath());
     const { idx, changed } = ensureGroups(file ? file.content : null);
-    if (changed) await writeIndex(idx, 'Migrate pdfs to groups').catch(() => {});
+    if (changed) await writeIndex(idx, 'Migrate pdfs to groups', req.user).catch(() => {});
     const archive = await readArchive();
     res.json({ groups: idx.groups || [], pdfs: idx.pdfs || [], archived: archive.items || [] });
   } catch (e) { next(e); }
@@ -82,7 +84,7 @@ router.post('/group', requireAdmin, async (req, res, next) => {
 
     const group = { id: nextId(idx.groups), name, parentId: parentId || null };
     idx.groups = [...idx.groups, group];
-    await writeIndex(idx, `Create pdf group ${group.id}`);
+    await writeIndex(idx, `Create pdf group ${group.id}`, req.user);
     res.status(201).json(group);
   } catch (e) { next(e); }
 });
@@ -129,7 +131,7 @@ router.put('/group/:gid', requireAdmin, async (req, res, next) => {
       g.parentId = newParentId;
     }
 
-    await writeIndex(idx, `Update pdf group ${gid}`);
+    await writeIndex(idx, `Update pdf group ${gid}`, req.user);
     res.json(g);
   } catch (e) { next(e); }
 });
@@ -155,13 +157,13 @@ router.delete('/group/:gid', requireAdmin, async (req, res, next) => {
 
     const inGroup = idx.pdfs.filter(p => allGroupIds.includes(Number(p.groupId)));
     for (const p of inGroup) {
-      await deleteBinary(pdfFilePathFiles(p.id), { message: `Delete pdf ${p.id} (group ${gid})` }).catch(() => {});
+      await deleteBinary(pdfFilePathFiles(p.id), attribution(req.user, `Delete pdf ${p.id} (group ${gid})`)).catch(() => {});
       await deleteBinary(pdfFilePathLegacy(p.id)).catch(() => {});
       await deleteBinary(pdfFilePathLegacy2(p.id)).catch(() => {});
     }
     idx.pdfs = idx.pdfs.filter(p => !allGroupIds.includes(Number(p.groupId)));
     idx.groups = idx.groups.filter(g => !allGroupIds.includes(Number(g.id)));
-    await writeIndex(idx, `Delete pdf group ${gid} (+ subgroups)`);
+    await writeIndex(idx, `Delete pdf group ${gid} (+ subgroups)`, req.user);
     res.json({ ok: true, deletedPdfs: inGroup.length, deletedGroups: allGroupIds.length });
   } catch (e) { next(e); }
 });
@@ -180,7 +182,7 @@ router.put('/groups/reorder', requireAdmin, async (req, res, next) => {
     }
     for (const g of byId.values()) reordered.push(g);
     idx.groups = reordered;
-    await writeIndex(idx, 'Reorder pdf groups');
+    await writeIndex(idx, 'Reorder pdf groups', req.user);
     res.json({ groups: idx.groups });
   } catch (e) { next(e); }
 });
@@ -202,7 +204,7 @@ router.put('/reorder', requireAdmin, async (req, res, next) => {
     for (const p of byId.values()) seq.push(p);
     let k = 0;
     idx.pdfs = idx.pdfs.map(p => Number(p.groupId) === groupId ? seq[k++] : p);
-    await writeIndex(idx, `Reorder pdfs in group ${groupId}`);
+    await writeIndex(idx, `Reorder pdfs in group ${groupId}`, req.user);
     res.json({ pdfs: idx.pdfs });
   } catch (e) { next(e); }
 });
@@ -223,8 +225,8 @@ router.post('/:id/archive', requireAdmin, async (req, res, next) => {
       ...archive.items.filter(a => Number(a.id) !== id),
       { ...entry, groupName: group?.name || '', archivedAt: new Date().toISOString() }
     ];
-    await writeArchive(archive, `Archive pdf ${id}`);
-    await writeIndex(idx, `Remove pdf ${id} from index (archived)`);
+    await writeArchive(archive, `Archive pdf ${id}`, req.user);
+    await writeIndex(idx, `Remove pdf ${id} from index (archived)`, req.user);
     res.json({ ok: true, archived: archive.items });
   } catch (e) { next(e); }
 });
@@ -246,8 +248,8 @@ router.post('/:id/unarchive', requireAdmin, async (req, res, next) => {
     const { groupName, archivedAt, ...meta } = entry;
     idx.pdfs = [...idx.pdfs, { ...meta, groupId: gid }];
     archive.items = archive.items.filter(a => Number(a.id) !== id);
-    await writeIndex(idx, `Restore pdf ${id} from archive`);
-    await writeArchive(archive, `Unarchive pdf ${id}`);
+    await writeIndex(idx, `Restore pdf ${id} from archive`, req.user);
+    await writeArchive(archive, `Unarchive pdf ${id}`, req.user);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -293,7 +295,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
 
     const newId = nextId(idx.pdfs);
     const buf = Buffer.from(dataBase64, 'base64');
-    await putBinary(pdfFilePathFiles(newId), buf, { message: `Add pdf ${newId}` });
+    await putBinary(pdfFilePathFiles(newId), buf, attribution(req.user, `Add pdf ${newId}`));
 
     const entry = {
       id: newId,
@@ -305,7 +307,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
       uploadedAt: new Date().toISOString()
     };
     idx.pdfs = [...idx.pdfs, entry];
-    await writeIndex(idx, `Add pdf ${newId} to index`);
+    await writeIndex(idx, `Add pdf ${newId} to index`, req.user);
     res.status(201).json(entry);
   } catch (e) { next(e); }
 });
@@ -328,12 +330,12 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
     }
     if (dataBase64) {
       const buf = Buffer.from(dataBase64, 'base64');
-      await putBinary(pdfFilePathFiles(id), buf, { message: `Replace pdf ${id}` });
+      await putBinary(pdfFilePathFiles(id), buf, attribution(req.user, `Replace pdf ${id}`));
       updated.size = buf.length;
       updated.uploadedAt = new Date().toISOString();
     }
     idx.pdfs[i] = updated;
-    await writeIndex(idx, `Update pdf ${id}`);
+    await writeIndex(idx, `Update pdf ${id}`, req.user);
     res.json(updated);
   } catch (e) { next(e); }
 });
@@ -343,15 +345,15 @@ router.delete('/:id', requireAdmin, async (req, res, next) => {
     const id = Number(req.params.id);
     const idx = await readIndex();
     idx.pdfs = (idx.pdfs || []).filter(p => Number(p.id) !== id);
-    await deleteBinary(pdfFilePathFiles(id), { message: `Delete pdf ${id}` }).catch(() => {});
+    await deleteBinary(pdfFilePathFiles(id), attribution(req.user, `Delete pdf ${id}`)).catch(() => {});
     await deleteBinary(pdfFilePathLegacy(id)).catch(() => {});
     await deleteBinary(pdfFilePathLegacy2(id)).catch(() => {});
-    await writeIndex(idx, `Remove pdf ${id} from index`);
+    await writeIndex(idx, `Remove pdf ${id} from index`, req.user);
     // also drop it from the archive, in case it was archived
     const archive = await readArchive();
     if (archive.items.some(a => Number(a.id) === id)) {
       archive.items = archive.items.filter(a => Number(a.id) !== id);
-      await writeArchive(archive, `Remove pdf ${id} from archive`);
+      await writeArchive(archive, `Remove pdf ${id} from archive`, req.user);
     }
     res.json({ ok: true });
   } catch (e) { next(e); }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getFile, putFile, deleteFile } from '../services/github.js';
+import { getFile, putFile, deleteFile, attribution } from '../services/github.js';
 
 const router = Router();
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
@@ -14,8 +14,10 @@ async function readArchive() {
   const c = file ? file.content : null;
   return (c && Array.isArray(c.items)) ? c : { items: [] };
 }
-async function writeArchive(content, message) {
-  return putFile(archivePath(), content, { message });
+// `user` is the logged-in panel admin (req.user) — gets stamped onto the commit
+// so GitHub shows who made the change instead of just the token owner.
+async function writeArchive(content, message, user) {
+  return putFile(archivePath(), content, attribution(user, message));
 }
 
 /* ---------- index helpers + one-time migration to groups ---------- */
@@ -43,8 +45,8 @@ async function readIndex() {
   return idx;
 }
 
-async function writeIndex(content, message) {
-  return putFile(indexPath(), content, { message });
+async function writeIndex(content, message, user) {
+  return putFile(indexPath(), content, attribution(user, message));
 }
 
 function nextId(list) {
@@ -62,7 +64,7 @@ router.get('/', async (_req, res, next) => {
   try {
     const file = await getFile(indexPath());
     const { idx, changed } = ensureGroups(file ? file.content : null);
-    if (changed) await writeIndex(idx, 'Migrate diagrams to groups').catch(() => {});
+    if (changed) await writeIndex(idx, 'Migrate diagrams to groups', req.user).catch(() => {});
     const archive = await readArchive();
     res.json({ groups: idx.groups || [], processes: idx.processes || [], archived: archive.items || [] });
   } catch (e) { next(e); }
@@ -81,7 +83,7 @@ router.post('/group', requireAdmin, async (req, res, next) => {
 
     const group = { id: nextId(idx.groups), name, parentId: parentId || null };
     idx.groups = [...idx.groups, group];
-    await writeIndex(idx, `Create group ${group.id}`);
+    await writeIndex(idx, `Create group ${group.id}`, req.user);
     res.status(201).json(group);
   } catch (e) { next(e); }
 });
@@ -128,7 +130,7 @@ router.put('/group/:gid', requireAdmin, async (req, res, next) => {
       g.parentId = newParentId;
     }
 
-    await writeIndex(idx, `Update group ${gid}`);
+    await writeIndex(idx, `Update group ${gid}`, req.user);
     res.json(g);
   } catch (e) { next(e); }
 });
@@ -154,11 +156,11 @@ router.delete('/group/:gid', requireAdmin, async (req, res, next) => {
 
     const inGroup = idx.processes.filter(p => allGroupIds.includes(Number(p.groupId)));
     for (const p of inGroup) {
-      await deleteFile(processPath(p.id), { message: `Delete process ${p.id} (group ${gid})` }).catch(() => {});
+      await deleteFile(processPath(p.id), attribution(req.user, `Delete process ${p.id} (group ${gid})`)).catch(() => {});
     }
     idx.processes = idx.processes.filter(p => !allGroupIds.includes(Number(p.groupId)));
     idx.groups = idx.groups.filter(g => !allGroupIds.includes(Number(g.id)));
-    await writeIndex(idx, `Delete group ${gid} (+ subgroups)`);
+    await writeIndex(idx, `Delete group ${gid} (+ subgroups)`, req.user);
     res.json({ ok: true, deletedDiagrams: inGroup.length, deletedGroups: allGroupIds.length });
   } catch (e) { next(e); }
 });
@@ -177,7 +179,7 @@ router.put('/groups/reorder', requireAdmin, async (req, res, next) => {
     }
     for (const g of byId.values()) reordered.push(g); // keep any not listed
     idx.groups = reordered;
-    await writeIndex(idx, 'Reorder groups');
+    await writeIndex(idx, 'Reorder groups', req.user);
     res.json({ groups: idx.groups });
   } catch (e) { next(e); }
 });
@@ -202,7 +204,7 @@ router.put('/reorder', requireAdmin, async (req, res, next) => {
     idx.processes = idx.processes.map(p =>
       Number(p.groupId) === groupId ? seq[k++] : p
     );
-    await writeIndex(idx, `Reorder diagrams in group ${groupId}`);
+    await writeIndex(idx, `Reorder diagrams in group ${groupId}`, req.user);
     res.json({ processes: idx.processes });
   } catch (e) { next(e); }
 });
@@ -223,8 +225,8 @@ router.post('/:id/archive', async (req, res, next) => {
       ...archive.items.filter(a => Number(a.id) !== id),
       { ...entry, groupName: group?.name || '', archivedAt: new Date().toISOString() }
     ];
-    await writeArchive(archive, `Archive process ${id}`);
-    await writeIndex(idx, `Remove process ${id} from index (archived)`);
+    await writeArchive(archive, `Archive process ${id}`, req.user);
+    await writeIndex(idx, `Remove process ${id} from index (archived)`, req.user);
     res.json({ ok: true, archived: archive.items });
   } catch (e) { next(e); }
 });
@@ -247,8 +249,8 @@ router.post('/:id/unarchive', async (req, res, next) => {
     const { groupName, archivedAt, ...meta } = entry;
     idx.processes = [...idx.processes, { ...meta, groupId: gid }];
     archive.items = archive.items.filter(a => Number(a.id) !== id);
-    await writeIndex(idx, `Restore process ${id} from archive`);
-    await writeArchive(archive, `Unarchive process ${id}`);
+    await writeIndex(idx, `Restore process ${id} from archive`, req.user);
+    await writeArchive(archive, `Unarchive process ${id}`, req.user);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -282,9 +284,9 @@ router.post('/', async (req, res, next) => {
       edges: req.body.edges || []
     };
     if (req.body.theme && typeof req.body.theme === 'object') process.theme = req.body.theme;
-    await putFile(processPath(newId), process, { message: `Create process ${newId}` });
+    await putFile(processPath(newId), process, attribution(req.user, `Create process ${newId}`));
     idx.processes = [...idx.processes, { id: newId, title, subtitle, groupId }];
-    await writeIndex(idx, `Add process ${newId} to index`);
+    await writeIndex(idx, `Add process ${newId} to index`, req.user);
     res.status(201).json(process);
   } catch (e) { next(e); }
 });
@@ -302,12 +304,12 @@ router.put('/:id/meta', async (req, res, next) => {
       const gid = Number(req.body.groupId);
       if (idx.groups.some(g => Number(g.id) === gid)) entry.groupId = gid;
     }
-    await writeIndex(idx, `Update meta for process ${id}`);
+    await writeIndex(idx, `Update meta for process ${id}`, req.user);
 
     const file = await getFile(processPath(id));
     if (file) {
       const body = { ...file.content, title: entry.title, subtitle: entry.subtitle };
-      await putFile(processPath(id), body, { message: `Sync meta for process ${id}` });
+      await putFile(processPath(id), body, attribution(req.user, `Sync meta for process ${id}`));
     }
     res.json(entry);
   } catch (e) { next(e); }
@@ -321,7 +323,7 @@ router.put('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'Process body required' });
     }
     body.id = Number(id);
-    await putFile(processPath(id), body, { message: `Update process ${id}` });
+    await putFile(processPath(id), body, attribution(req.user, `Update process ${id}`));
 
     const idx = await readIndex();
     const i = idx.processes.findIndex(p => Number(p.id) === Number(id));
@@ -333,7 +335,7 @@ router.put('/:id', async (req, res, next) => {
       if (typeof body.subtitle === 'string' && idx.processes[i].subtitle !== body.subtitle) {
         idx.processes[i].subtitle = body.subtitle; changed = true;
       }
-      if (changed) await writeIndex(idx, `Sync title for process ${id}`);
+      if (changed) await writeIndex(idx, `Sync title for process ${id}`, req.user);
     }
     res.json(body);
   } catch (e) { next(e); }
@@ -342,15 +344,15 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
-    await deleteFile(processPath(id), { message: `Delete process ${id}` });
+    await deleteFile(processPath(id), attribution(req.user, `Delete process ${id}`));
     const idx = await readIndex();
     idx.processes = idx.processes.filter(p => Number(p.id) !== Number(id));
-    await writeIndex(idx, `Remove process ${id} from index`);
+    await writeIndex(idx, `Remove process ${id} from index`, req.user);
     // also drop it from the archive, in case it was archived
     const archive = await readArchive();
     if (archive.items.some(a => Number(a.id) === Number(id))) {
       archive.items = archive.items.filter(a => Number(a.id) !== Number(id));
-      await writeArchive(archive, `Remove process ${id} from archive`);
+      await writeArchive(archive, `Remove process ${id} from archive`, req.user);
     }
     res.json({ ok: true });
   } catch (e) { next(e); }
