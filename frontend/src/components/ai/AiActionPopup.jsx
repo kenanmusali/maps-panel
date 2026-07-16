@@ -48,7 +48,7 @@ export default function AiActionPopup({ actions, context, onCancel, onConfirm })
         </div>
 
         <p className="ai-popup-lead">
-          AI köməkçi aşağıdakı {actions.length} əməliyyatı təklif edir.
+          ALM-AI aşağıdakı {actions.length} əməliyyatı təklif edir.
           Təsdiqləməyincə heç nə dəyişmir.
         </p>
 

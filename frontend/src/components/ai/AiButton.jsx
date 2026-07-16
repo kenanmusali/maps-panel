@@ -10,7 +10,7 @@ export default function AiButton({ active, onClick }) {
   return (
     <button
       className={`icon-btn ai-trigger ${active ? 'active' : ''}`}
-      title="AI Köməkçi"
+      title="ALM-AI"
       onClick={onClick}
     >
       <Sparkles size={17} />

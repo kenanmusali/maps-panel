@@ -12,9 +12,7 @@ import AiActionPopup from './AiActionPopup.jsx';
 
 const HELLO = {
   role: 'assistant',
-  content: 'Salam! Mən Map-Panel köməkçisiyəm. Nə etmək istədiyinizi yazın — '
-    + 'diaqram qurmaq, node əlavə etmək, qovluq yaratmaq, arxivləmək və s. '
-    + 'Azərbaycanca və ya ingiliscə yaza bilərsiniz, cavabı Azərbaycanca verəcəyəm.'
+  content: 'Salam! ALM-AI köməkçisiyəm. Diaqramlar qurmağa, node-lar yaratmağa və layihələrinizi təşkil etməyə kömək edirəm. Nə etmək istəyirsiniz?'
 };
 
 export default function AiSidebar({ open, onClose, context, runActions, suggestions = [] }) {
@@ -112,7 +110,7 @@ export default function AiSidebar({ open, onClose, context, runActions, suggesti
         <div className="ai-head">
           <span className="ai-head-icon"><Sparkles size={16} /></span>
           <div className="ai-head-text">
-            <strong>AI Köməkçi</strong>
+            <strong>ALM-AI</strong>
             <span>{limits?.active ? limits.active.model : 'konfiqurasiya edilməyib'}</span>
           </div>
           <button className="ai-icon-btn" title="Limitlər" onClick={() => setShowLimits(v => !v)}>
