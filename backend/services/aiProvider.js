@@ -1,16 +1,20 @@
 // aiProvider.js
-// Thin adapter over the FREE LLM APIs.
+// Thin adapter over the FREE LLM APIs. Nothing here is Map-Panel specific —
+// it just takes a system prompt + messages and returns raw text.
+//
 // Provider is picked automatically from whichever key is present in the env:
 //   GEMINI_API_KEY      -> Google AI Studio (default, best free tier)
 //   GROQ_API_KEY        -> Groq
 //   OPENROUTER_API_KEY  -> OpenRouter (:free models)
+//
 
 const PROVIDERS = {
   gemini: {
     label: 'Google Gemini (AI Studio)',
     envKey: 'GEMINI_API_KEY',
-    // gemini-1.5-flash is the current stable free-tier model.
-    defaultModel: 'gemini-1.5-flash',
+  defaultModel: 'gemini-1.5-flash',
+    // Published free-tier limits. They change on Google's side, so this is
+    // shown in the UI as a reference, not as a hard guarantee.
     limits: { rpm: 15, rpd: 1500, tpm: 1000000 },
     docs: 'https://ai.google.dev/gemini-api/docs/rate-limits'
   },
@@ -42,14 +46,10 @@ export function pickProvider() {
 export function providerInfo(name) {
   const p = PROVIDERS[name];
   if (!p) return null;
-  // Clean the model name from ENV or use default
-  const rawModel = process.env.AI_MODEL || p.defaultModel;
-  const modelName = rawModel.trim();
-  
   return {
     name,
     label: p.label,
-    model: modelName,
+    model: process.env.AI_MODEL || p.defaultModel,
     limits: p.limits,
     docs: p.docs
   };
@@ -64,7 +64,11 @@ export function allProviders() {
 
 /* ------------------------------------------------------------------ *
  * Usage counters
- * ------------------------------------------------------------------ */
+ * ------------------------------------------------------------------ *
+ * In-memory, per warm serverless instance. Enough to show the admin how
+ * much of the free quota this session has burned; it resets when Vercel
+ * spins up a cold instance, and the UI says so.
+ */
 const usage = {
   day: new Date().toISOString().slice(0, 10),
   requests: 0,
@@ -115,33 +119,34 @@ export function getUsage() {
   };
 }
 
+/** Throw early instead of burning a call we know the provider will reject. */
 function guardLocalLimits(info) {
   const u = getUsage();
   if (info.limits.rpd && u.requestsToday >= info.limits.rpd) {
-    const e = new Error(`Daily limit reached.`);
+    const e = new Error(`Günlük limit doldu (${u.requestsToday}/${info.limits.rpd}). Sabah yenilənəcək.`);
     e.status = 429;
     throw e;
   }
   if (info.limits.rpm && u.requestsThisMinute >= info.limits.rpm) {
-    const e = new Error(`Minute limit reached.`);
+    const e = new Error(`Dəqiqəlik limit doldu (${u.requestsThisMinute}/${info.limits.rpm}). Bir az gözləyin.`);
     e.status = 429;
     throw e;
   }
 }
 
 /* ------------------------------------------------------------------ *
- * API Calls
+ * Calls
  * ------------------------------------------------------------------ */
 
 async function callGemini({ system, messages, model, apiKey }) {
-  // We MUST use v1beta for 'systemInstruction' and 'responseMimeType' to work
-  const cleanKey = apiKey.trim();
-  const cleanModel = model.trim();
+  // FORCE the model name here for a test:
+  const forcedModel = "gemini-1.5-flash"; 
+  
+  console.log("ATTEMPTING MODEL:", forcedModel);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cleanModel)}:generateContent?key=${cleanKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(forcedModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
   
   const body = {
-    // systemInstruction is supported in v1beta
     systemInstruction: { parts: [{ text: system }] },
     contents: messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -150,28 +155,20 @@ async function callGemini({ system, messages, model, apiKey }) {
     generationConfig: {
       temperature: 0.2,
       maxOutputTokens: 4096,
-      // responseMimeType is supported in v1beta
       responseMimeType: 'application/json'
     }
   };
-
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-
   const data = await res.json().catch(() => null);
-
   if (!res.ok) {
-    // If it still says "Model not found", it's usually a regional issue or typo
-    const msg = data?.error?.message || `Gemini Error ${res.status}`;
-    throw new Error(msg);
+    throw new Error(data?.error?.message || `Gemini ${res.status}`);
   }
-
   const text = (data?.candidates?.[0]?.content?.parts || [])
     .map(p => p.text || '').join('');
-
   return {
     text,
     tokensIn: data?.usageMetadata?.promptTokenCount || 0,
@@ -184,23 +181,21 @@ async function callOpenAICompatible({ system, messages, model, apiKey, baseUrl, 
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey.trim()}`,
+      Authorization: `Bearer ${apiKey}`,
       ...(extraHeaders || {})
     },
     body: JSON.stringify({
-      model: model.trim(),
+      model,
       temperature: 0.2,
       max_tokens: 4096,
       response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: system }, ...messages]
     })
   });
-
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(data?.error?.message || `${baseUrl} error: ${res.status}`);
+    throw new Error(data?.error?.message || `${baseUrl} ${res.status}`);
   }
-
   return {
     text: data?.choices?.[0]?.message?.content || '',
     tokensIn: data?.usage?.prompt_tokens || 0,
@@ -208,17 +203,20 @@ async function callOpenAICompatible({ system, messages, model, apiKey, baseUrl, 
   };
 }
 
+/**
+ * Ask the configured free provider for a completion.
+ * `messages` is [{ role: 'user'|'assistant', content }].
+ * Returns { text, provider, model, tokensIn, tokensOut }.
+ */
 export async function askLLM({ system, messages }) {
   const name = pickProvider();
   if (!name) {
-    const e = new Error('AI Key not set.');
+    const e = new Error('AI açarı təyin edilməyib. Vercel-də GEMINI_API_KEY əlavə edin.');
     e.status = 503;
     throw e;
   }
-
   const info = providerInfo(name);
   const apiKey = process.env[PROVIDERS[name].envKey];
-
   guardLocalLimits(info);
   noteRequest();
 
@@ -241,7 +239,6 @@ export async function askLLM({ system, messages }) {
         }
       });
     }
-
     usage.tokensIn += out.tokensIn || 0;
     usage.tokensOut += out.tokensOut || 0;
     return { ...out, provider: name, model: info.model };
