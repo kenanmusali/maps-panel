@@ -7,7 +7,6 @@
 //   GROQ_API_KEY        -> Groq
 //   OPENROUTER_API_KEY  -> OpenRouter (:free models)
 //
-// Force one with AI_PROVIDER=gemini|groq|openrouter.
 
 const PROVIDERS = {
   gemini: {
