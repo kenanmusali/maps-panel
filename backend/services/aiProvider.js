@@ -139,10 +139,13 @@ function guardLocalLimits(info) {
  * ------------------------------------------------------------------ */
 
 async function callGemini({ system, messages, model, apiKey }) {
-    console.log("MODEL:", model);
-  console.log("ENV:", process.env.AI_MODEL);
+  // FORCE the model name here for a test:
+  const forcedModel = "gemini-1.5-flash"; 
+  
+  console.log("ATTEMPTING MODEL:", forcedModel);
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(forcedModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  
   const body = {
     systemInstruction: { parts: [{ text: system }] },
     contents: messages.map(m => ({
