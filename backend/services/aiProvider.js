@@ -12,7 +12,7 @@ const PROVIDERS = {
   gemini: {
     label: 'Google Gemini (AI Studio)',
     envKey: 'GEMINI_API_KEY',
-  defaultModel: 'gemini-1.5-flash',
+  defaultModel: 'gemini-3.5-flash',
     // Published free-tier limits. They change on Google's side, so this is
     // shown in the UI as a reference, not as a hard guarantee.
     limits: { rpm: 15, rpd: 1500, tpm: 1000000 },
@@ -140,7 +140,7 @@ function guardLocalLimits(info) {
 
 async function callGemini({ system, messages, model, apiKey }) {
   // FORCE the model name here for a test:
-  const forcedModel = "gemini-1.5-flash"; 
+  const forcedModel = "gemini-3.5-flash"; 
   
   console.log("ATTEMPTING MODEL:", forcedModel);
 
