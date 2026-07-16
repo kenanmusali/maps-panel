@@ -2193,7 +2193,7 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
   outline: none;
   transition: border-color .15s ease;
 }
-.ai-input textarea:focus { border-color: #8b5cf6; }
+.ai-input textarea:focus { border-color: var(--primary-dark); }
 .ai-send {
   flex: 0 0 auto;
   width: 45px;
