@@ -13,6 +13,19 @@ const USERS = [
     role: 'admin'
   },
   {
+    // Extra admin accounts — for each one, the password is just the
+    // username itself (e.g. "admin_2" logs in with "admin_2" / "admin_2").
+    // To add another admin later, copy this pattern with a new username.
+    username: 'admin_2',
+    password: 'admin_2',
+    role: 'admin'
+  },
+  {
+    username: 'admin_123e123',
+    password: 'admin_123e123',
+    role: 'admin'
+  },
+  {
     username: 'user',
     password: 'user123',
     role: 'viewer'
