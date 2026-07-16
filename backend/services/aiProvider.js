@@ -140,6 +140,9 @@ function guardLocalLimits(info) {
  * ------------------------------------------------------------------ */
 
 async function callGemini({ system, messages, model, apiKey }) {
+    console.log("MODEL:", model);
+  console.log("ENV:", process.env.AI_MODEL);
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const body = {
     systemInstruction: { parts: [{ text: system }] },
@@ -197,8 +200,7 @@ async function callOpenAICompatible({ system, messages, model, apiKey, baseUrl, 
     tokensOut: data?.usage?.completion_tokens || 0
   };
 }
-console.log("MODEL:", model);
-console.log("ENV:", process.env.AI_MODEL);
+
 /**
  * Ask the configured free provider for a completion.
  * `messages` is [{ role: 'user'|'assistant', content }].
