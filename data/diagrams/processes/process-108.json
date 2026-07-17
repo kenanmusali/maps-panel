@@ -82,7 +82,7 @@
       "laneId": "lane-1784280581443",
       "w": 240,
       "h": 70,
-      "text": "Avtomili ayrılmış ( xətlənmiş ) sahədə saxlayır",
+      "text": "Avtomobiili ayrılmış ( xətlənmiş ) sahədə saxlayır",
       "info": {
         "general": [
           ""
@@ -130,7 +130,7 @@
       "laneId": "lane-1784280602524",
       "w": 220,
       "h": 70,
-      "text": "Ödənişli istifadə halıda məbləğ bildirilir",
+      "text": "Ödənişli istifadə halında məbləğ bildirilir",
       "info": {
         "general": [
           ""
@@ -193,8 +193,8 @@
       "y": 60,
       "laneId": "lane-1784280581443",
       "w": 210,
-      "h": 80,
-      "text": "Avtomobili dayanacaqlardan çıxarır",
+      "h": 70,
+      "text": "Avtomobili dayanacaqdan çıxarır",
       "info": {
         "general": [
           ""
