@@ -4,7 +4,66 @@
   "subtitle": "ALM-İMS-PRD-TP-001",
   "width": 2200,
   "height": 900,
-  "lanes": [],
-  "nodes": [],
-  "edges": []
+  "lanes": [
+    {
+      "id": "lane-1784280581443",
+      "label": "Sürücü",
+      "y": 20,
+      "h": 160
+    },
+    {
+      "id": "lane-1784280602524",
+      "label": "Dayanacaq üzrə məsul əməkdaş",
+      "y": 180,
+      "h": 160
+    },
+    {
+      "id": "lane-1784280613332",
+      "label": "Şöbə müdiri",
+      "y": 340,
+      "h": 160
+    }
+  ],
+  "nodes": [
+    {
+      "id": 1,
+      "type": "pill",
+      "style": "solid",
+      "x": 110,
+      "y": 70,
+      "laneId": "lane-1784280581443",
+      "w": 330,
+      "h": 50,
+      "text": "Avtomobil ilə dayanacaq girişinə yaxınlaşır",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "rect",
+      "style": "solid",
+      "x": 110,
+      "y": 200,
+      "laneId": "lane-1784280602524",
+      "w": 330,
+      "h": 70,
+      "text": "Avtomobil nömrəsinin güzəşt siyahısında olub olmamasını yoxlayır",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": 1,
+      "to": 2,
+      "s": "bottom",
+      "e": "top"
+    }
+  ]
 }
