@@ -3,8 +3,69 @@
   "title": "Ekspedisiya xidmətlərin göstərilməsi çərçivəsində idxal və tranzit əməliyyatlarına dair daxil olmuş müştəri sorğularının emalı və icrasına dair iş axını",
   "subtitle": "AE-001",
   "width": 2200,
-  "height": 900,
-  "lanes": [],
+  "height": 1860,
+  "lanes": [
+    {
+      "id": "lane-1784456899095",
+      "label": "Müştəri",
+      "y": 20,
+      "h": 180
+    },
+    {
+      "id": "lane-1784456913447",
+      "label": "Marketinq və kommunikasiya departamenti",
+      "y": 200,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457059391",
+      "label": "ALM digərstruktur vahidi (BDD,BD)",
+      "y": 380,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457083486",
+      "label": "AE / Əməliyyat şöbəsi",
+      "y": 560,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457117775",
+      "label": "AE / Logistika şöbəsi",
+      "y": 740,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457140247",
+      "label": "AE / Direktor",
+      "y": 920,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457151359",
+      "label": "Subpodratçı",
+      "y": 1100,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457221887",
+      "label": "ALM / Hüquq departamenti",
+      "y": 1280,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457233944",
+      "label": "AE / Mühasibatlıq şöbəsi",
+      "y": 1460,
+      "h": 180
+    },
+    {
+      "id": "lane-1784457261522",
+      "label": "AE / Baş mühasib",
+      "y": 1640,
+      "h": 180
+    }
+  ],
   "nodes": [],
   "edges": []
 }
