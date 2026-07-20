@@ -64,13 +64,13 @@ export default function AdminPanel({ process, selection, setSelection, updatePro
   }, [onHeightChange]);
 
   const SECTIONS = [
-    { pid: 'diagram', icon: <Layers size={14} />, label: 'Diaqram',
+    { pid: 'diagram', icon: <Layers size={14} />, label: 'Başliq',
       content: <DiagramMetaSection process={process} updateProcess={updateProcess} onArchive={onArchive} /> },
-    { pid: 'theme', icon: <Palette size={14} />, label: 'Rəng/Tema',
+    { pid: 'theme', icon: <Palette size={14} />, label: 'Rəng Seçimi',
       content: <ThemeSection process={process} updateProcess={updateProcess} /> },
-    { pid: 'panels', icon: <LayoutList size={14} />, label: 'Panellər', badge: process.lanes.length,
+    { pid: 'panels', icon: <LayoutList size={14} />, label: 'Sütunlar', badge: process.lanes.length,
       content: <PanelsSection process={process} selection={selection} setSelection={setSelection} updateProcess={updateProcess} /> },
-    { pid: 'addnode', icon: <Shapes size={14} />, label: 'Node əlavə et',
+    { pid: 'addnode', icon: <Shapes size={14} />, label: 'Proseslər',
       content: <NodesSection process={process} selection={selection} setSelection={setSelection}
         updateProcess={updateProcess} addStyle={addStyle} setAddStyle={setAddStyle} onAddShape={onAddShape} /> },
     { pid: 'export', icon: <Share2 size={14} />, label: 'Paylaş',
@@ -172,13 +172,13 @@ function DiagramMetaSection({ process, updateProcess, onArchive }) {
   return (
     <>
       <div className="field-row col">
-        <label>Ad</label>
+        <label>Sənədin Adı</label>
         <textarea rows={2} value={process.title || ''}
           onChange={e => updateProcess(p => ({ ...p, title: e.target.value }), 'meta-title')}
-          placeholder="Diaqramın adı" />
+          placeholder="Sənədin adını yazın" />
       </div>
       <div className="field-row col">
-        <label>İkinci ad (etiket)</label>
+        <label>Sənədin Nömrəsi</label>
         <input value={process.subtitle || ''}
           onChange={e => updateProcess(p => ({ ...p, subtitle: e.target.value }), 'meta-subtitle')}
           placeholder="məs. ALM-X1-2-3S" />
@@ -216,7 +216,7 @@ function ThemeSection({ process, updateProcess }) {
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.node || 'var(--primary)' }} />
-          <span>Pill / Node</span>
+          <span>Proseslərin rəngini dəyişin</span>
         </div>
         <ColorField label="" value={theme.node || ''}
           onChange={v => setTheme({ node: v })} onClear={() => setTheme({ node: '' })} />
@@ -225,7 +225,7 @@ function ThemeSection({ process, updateProcess }) {
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.edge || 'var(--primary)' }} />
-          <span>Ox (arrow)</span>
+          <span>Yalnız oxların rəngini dəyişin</span>
         </div>
         <ColorField label="" value={theme.edge || ''}
           onChange={v => setTheme({ edge: v })} onClear={() => setTheme({ edge: '' })} />
@@ -234,7 +234,7 @@ function ThemeSection({ process, updateProcess }) {
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.lane || 'var(--primary)' }} />
-          <span>Panel (sidepanel)</span>
+          <span>Sütunların rəngini dəyişin</span>
         </div>
         <ColorField label="" value={theme.lane || ''}
           onChange={v => setTheme({ lane: v })} onClear={() => setTheme({ lane: '' })} />
@@ -344,7 +344,7 @@ function PanelsSection({ process, selection, setSelection, updateProcess }) {
     <>
       <div className="panel-add-row">
         <input value={newPanelName} onChange={e => setNewPanelName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addLane()} placeholder="Yeni panel adı" />
+          onKeyDown={e => e.key === 'Enter' && addLane()} placeholder="Yeni sütun adı" />
         <button className="btn primary small" onClick={addLane}><Plus size={14} /> Əlavə et</button>
       </div>
 

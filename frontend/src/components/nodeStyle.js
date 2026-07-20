@@ -20,18 +20,18 @@ export const STYLES = ['solid', 'stroke', 'dashed'];
 export const SVG_SHAPES = ['diamond', 'parallelogram', 'preparation', 'manualinput', 'document', 'trapezoid', 'triangledown'];
 
 export const SHAPE_LABEL = {
-  pill: 'Pill',
-  rect: 'Rectangle',
-  diamond: 'Romb',
-  parallelogram: 'Parallel',
-  subprocess: 'Alt-proses',
-  manualinput: 'Əl daxiletmə',
-  document: 'Sənəd',
+  pill: 'Başlıq',
+  rect: 'Əsas Proses',
+  diamond: 'Şərt',
+  parallelogram: 'Data Məlumatı',
+  subprocess: 'Alt Proses',
+  manualinput: 'Əl ilə görülən işlər',
+  document: 'Sənəd/Qeyd',
   preparation: 'Hazırlıq',
   delay: 'Gecikmə',
   trapezoid: 'Trapesiya',
-  triangledown: 'Tərs üçbucaq',
-  roundright: 'Sağ yumru',
+  triangledown: 'Birləşdirmə',
+  roundright: 'Gecikmə',
 };
 
 export const STYLE_LABEL = {
