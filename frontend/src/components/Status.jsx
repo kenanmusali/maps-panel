@@ -56,8 +56,8 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
     <span className="status-control" ref={ref} onClick={e => e.stopPropagation()}>
       <button
         type="button"
-        className={`status-trigger ${meta ? meta.cls : 'none'}`}
-        title="Statusu dəyiş"
+        className={`pill-chip edit-chip ${meta ? meta.cls : 'none'}`}
+        
         onClick={() => setOpen(o => !o)}
       >
         {meta ? <meta.Icon size={size} /> : <Clock size={size} />}
