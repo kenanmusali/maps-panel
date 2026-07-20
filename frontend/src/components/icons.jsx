@@ -10,7 +10,6 @@ export {
   Signature,
   CircleCheck,
   CircleX,
-  Clock,
   FileText,
   AlertTriangle,
   X,
