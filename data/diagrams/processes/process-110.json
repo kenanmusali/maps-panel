@@ -136,7 +136,7 @@
       "laneId": "lane-1784531690390",
       "w": 200,
       "h": 70,
-      "text": "Yeni addım",
+      "text": "Məhsulların anbara fiziki  qəbulu",
       "info": {
         "general": [
           ""
@@ -163,12 +163,12 @@
       "id": 9,
       "type": "rect",
       "style": "solid",
-      "x": 780,
-      "y": 375,
+      "x": 710,
+      "y": 370,
       "laneId": "lane-1784531690390",
-      "w": 200,
-      "h": 70,
-      "text": "Yeni addım",
+      "w": 270,
+      "h": 80,
+      "text": "Məhsullar terminalla sistem üzrə qəbulu və xanalara yerləşdirilməsi",
       "info": {
         "general": [
           ""
@@ -183,8 +183,8 @@
       "y": 220,
       "laneId": "lane-1784531682758",
       "w": 200,
-      "h": 70,
-      "text": "Yeni başlanğıc/son",
+      "h": 100,
+      "text": "Müştəriyə qəbul prosesi yekunlaşdıqdan sonra sənədlərin gğndərilməsi",
       "info": {
         "general": [
           ""
