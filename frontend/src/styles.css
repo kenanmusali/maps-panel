@@ -1075,6 +1075,7 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
   user-select: none;
   background: var(--surface-soft);
   transition: background 0.18s var(--ease);
+    border-radius: var(--r-lg);
 }
 .group-head:hover { background: var(--primary-soft); }
 .group-chevron { display: inline-flex; color: var(--text-secondary); cursor: pointer; }
@@ -1101,6 +1102,7 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
   padding: 10px;
   display: flex; flex-direction: column; gap: 8px;
   background: var(--bg-soft);
+  border-radius:0px 0px 25px 25px;
 }
 .group-body .process-item { padding: 12px 14px; }
 
