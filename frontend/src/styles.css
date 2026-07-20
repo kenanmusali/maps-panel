@@ -335,7 +335,7 @@ top: 50px;
    SEARCH + PROCESS LIST
    ============================================================ */
 .search-wrap {
-  position: relative; width: 100%; max-width: 540px; margin-bottom: 22px;
+  position: relative; width: 100%; max-width: 640px; margin-bottom: 22px;
 }
 .search-wrap input {
   width: 100%; padding: 13px 16px 13px 44px;
@@ -350,7 +350,7 @@ top: 50px;
   color: var(--text-muted); display: flex;
 }
 
-.process-list { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: 12px; }
+.process-list { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
 
 .process-group { display: flex; flex-direction: column; }
 .process-item {
@@ -541,7 +541,7 @@ top: 50px;
 .diagram-wrap.edit-mode .lane-rail { cursor: pointer; }
 .diagram-wrap.edit-mode .lane-rail:hover { filter: brightness(0.92); }
 .lane-rail .lane-label {
-  transform: rotate(-90deg); white-space: nowrap; font-size: 12px; font-weight: 700;
+  transform: rotate(-90deg); font-size: 12px; font-weight: 700;
   letter-spacing: 0.03em; text-align: center; line-height: 1.3;
 }
 .lane-row { position: absolute; left: 56px; right: 0; border-bottom: 1px solid var(--border); pointer-events: none; }
@@ -685,7 +685,7 @@ top: 50px;
 /* roundright (sağ yumru) — rectangle with square left corners and a fully
    rounded (pill) right side. Same asymmetric border-radius trick as delay. */
 .node.roundright {
-  border-radius: var(--r-sm) 999px 999px var(--r-sm) / var(--r-sm) 50% 50% var(--r-sm);
+  border-radius: 40px 100px 100px 40px;
   padding-right: 26px;
 }
 
@@ -1059,7 +1059,7 @@ details[open] summary::before { transform: rotate(90deg); }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   margin-bottom: 12px;
-  overflow: hidden;
+  /* overflow: hidden; */
   box-shadow: var(--sh-xs);
 }
 

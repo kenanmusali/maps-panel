@@ -5,6 +5,7 @@ import { api, setToken } from '../api/client.js';
 import TitleEditButton from './TitleEditButton.jsx';
 import Welcome1Img from '../assets/welcome/1.png';
 import Welcome2Img from '../assets/welcome/2.png';
+import Welcome3Img from '../assets/welcome/3.png';
 
 function fmtTime(d) {
   const h = d.getHours();
@@ -161,7 +162,7 @@ export default function SectionsHub({ onPick, onLogout }) {
 
           <div className="tile-wrap">
             <button className="section-tile" onClick={() => onPick('templates')}>
-              <div className="section-tile-icon"><TemplateTileIcon /></div>
+               <div className="section-tile-icon"><img src={Welcome1Img} /></div>
               <div className="section-tile-title">{t('hub_tmpl_title', 'Şablonlar')}</div>
               <div className="section-tile-sub">{t('hub_tmpl_sub', 'Sənəd şablonları')}</div>
             </button>
