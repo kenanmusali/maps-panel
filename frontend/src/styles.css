@@ -2378,4 +2378,4 @@ border-radius: var(--r-lg) var(--r-lg) 20px 20px;
 .status-opt.notdone svg { color: #dc2626; }
 
 /* status cell inside a diagram / pdf row */
-.row-status { display: inline-flex; align-items: center; margin-right: 8px; }
+.row-status { display: inline-flex; align-items: center;  }
