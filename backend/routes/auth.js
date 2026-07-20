@@ -22,6 +22,7 @@ const USERS = [
     password: 'user123',
     role: 'viewer'
   }
+  
 ];
 
 export function requireAuth(req, res, next) {
