@@ -131,8 +131,8 @@
       "id": 7,
       "type": "rect",
       "style": "solid",
-      "x": 80,
-      "y": 360,
+      "x": 70,
+      "y": 375,
       "laneId": "lane-1784531690390",
       "w": 200,
       "h": 70,
@@ -151,8 +151,8 @@
       "y": 360,
       "laneId": "lane-1784531690390",
       "w": 200,
-      "h": 70,
-      "text": "Yeni addım",
+      "h": 100,
+      "text": "Qəbul olunmuş məhsulların çeşidlənməsi və patentləşdirilməsi ",
       "info": {
         "general": [
           ""
@@ -164,7 +164,7 @@
       "type": "rect",
       "style": "solid",
       "x": 780,
-      "y": 360,
+      "y": 375,
       "laneId": "lane-1784531690390",
       "w": 200,
       "h": 70,
