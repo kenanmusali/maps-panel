@@ -15,6 +15,7 @@ import { makeSection } from './infoModel.js';
 import { ColorField } from './AdminPanel.jsx';
 import { repackLanes } from './laneRepack.js';
 import { autoNodeHeight } from './nodeMeasure.js';
+import { useLabels } from '../labels/LabelsContext.jsx';
 
 const MENU_W = 230;
 const FLYOUT_W = 400;
@@ -101,7 +102,7 @@ function MenuItem({ pid, icon, label, danger, action, openItem, setOpenItem, sid
   );
 }
 
-export default function SelectionMenu({ selection, process, updateProcess, setSelection, anchorRect, textOnly = false }) {
+export default function SelectionMenu({ selection, process, updateProcess, setSelection, anchorRect }) {
   const [openItem, setOpenItem] = useState(null);
   const rootRef = useRef(null);
   const [side, setSide] = useState('right');
@@ -170,7 +171,7 @@ export default function SelectionMenu({ selection, process, updateProcess, setSe
             node={process.nodes.find(n => String(n.id) === String(selection.id))}
             process={process} updateProcess={updateProcess}
             openItem={openItem} setOpenItem={setOpenItem} side={side}
-            onDelete={() => setSelection(null)} textOnly={textOnly}
+            onDelete={() => setSelection(null)}
           />
         )}
         {selection.kind === 'lane' && (
@@ -178,14 +179,14 @@ export default function SelectionMenu({ selection, process, updateProcess, setSe
             lane={process.lanes[selection.id]} laneIndex={selection.id}
             process={process} updateProcess={updateProcess}
             openItem={openItem} setOpenItem={setOpenItem} side={side}
-            onDelete={() => setSelection(null)} textOnly={textOnly}
+            onDelete={() => setSelection(null)}
           />
         )}
         {selection.kind === 'edge' && (
           <EdgeMenu
             index={selection.id} process={process} updateProcess={updateProcess}
             openItem={openItem} setOpenItem={setOpenItem} side={side}
-            setSelection={setSelection} textOnly={textOnly}
+            setSelection={setSelection}
           />
         )}
       </div>
@@ -194,7 +195,8 @@ export default function SelectionMenu({ selection, process, updateProcess, setSe
 }
 
 /* ===================== Panel (lane) ===================== */
-function LaneMenu({ lane, laneIndex, process, updateProcess, openItem, setOpenItem, side, onDelete, textOnly }) {
+function LaneMenu({ lane, laneIndex, process, updateProcess, openItem, setOpenItem, side, onDelete }) {
+  const { t } = useLabels();
   if (!lane) return <div className="sel-ctx-empty">Panel tapılmadı.</div>;
   function patch(field, value) {
     updateProcess(p => {
@@ -204,17 +206,6 @@ function LaneMenu({ lane, laneIndex, process, updateProcess, openItem, setOpenIt
     }, `lane-${laneIndex}-${field}`);
   }
   const nodeCount = process.nodes.filter(n => n.laneId === lane.id).length;
-
-  if (textOnly) {
-    return (
-      <MenuItem pid="lane-label" icon={<Type size={14} />} label="Panel adı" openItem={openItem} setOpenItem={setOpenItem} side={side}>
-        <div className="field-row col">
-          <label>Ad</label>
-          <textarea rows={2} value={lane.label} onChange={e => patch('label', e.target.value)} />
-        </div>
-      </MenuItem>
-    );
-  }
 
   return (
     <>
@@ -229,7 +220,7 @@ function LaneMenu({ lane, laneIndex, process, updateProcess, openItem, setOpenIt
         </div>
         <div className="hint">Panel daxilində {nodeCount} node var. Hündürlük avtomatik tənzimlənir.</div>
       </MenuItem>
-      <MenuItem pid="lane-del" icon={<Trash2 size={14} />} label="Sil" danger action={() => {
+      <MenuItem pid="lane-del" icon={<Trash2 size={14} />} label={t('nodemenu.delete', 'Sil')} danger action={() => {
         if (!confirm('Bu paneli silmək istəyirsiniz?')) return;
         updateProcess(p => {
           const remainingNodes = p.nodes.filter(n => n.laneId !== lane.id);
@@ -249,7 +240,8 @@ const SIDE_OPTS = [['top', 'üst'], ['right', 'sağ'], ['bottom', 'alt'], ['left
 const ARROW_OPTS = [['end', 'Son'], ['start', 'Başlanğıc'], ['both', 'Hər ikisi'], ['none', 'Yoxdur']];
 function castId(v) { return /^\d+$/.test(v) ? Number(v) : v; }
 
-function EdgeMenu({ index, process, updateProcess, openItem, setOpenItem, side, setSelection, textOnly }) {
+function EdgeMenu({ index, process, updateProcess, openItem, setOpenItem, side, setSelection }) {
+  const { t } = useLabels();
   const edge = process.edges[index];
   if (!edge) return <div className="sel-ctx-empty">Ox tapılmadı.</div>;
 
@@ -269,18 +261,6 @@ function EdgeMenu({ index, process, updateProcess, openItem, setOpenItem, side, 
     if (!confirm('Bu oxu silmək istəyirsiniz?')) return;
     updateProcess(p => ({ ...p, edges: p.edges.filter((_, i) => i !== index) }));
     setSelection(null);
-  }
-
-  if (textOnly) {
-    return (
-      <MenuItem pid="edge-label" icon={<Type size={14} />} label="Mətn" openItem={openItem} setOpenItem={setOpenItem} side={side}>
-        <div className="field-row col">
-          <label>Ox etiketi</label>
-          <input value={edge.label || ''} placeholder="məs. Bəli / Xeyr"
-            onChange={e => patch({ label: e.target.value })} />
-        </div>
-      </MenuItem>
-    );
   }
 
   return (
@@ -354,13 +334,14 @@ function EdgeMenu({ index, process, updateProcess, openItem, setOpenItem, side, 
         <ColorField label="Ox rəngi" value={edge.color || ''}
           onChange={v => patch({ color: v })} onClear={() => patch({ color: '' })} />
       </MenuItem>
-      <MenuItem pid="edge-del" icon={<Trash2 size={14} />} label="Sil" danger action={del} />
+      <MenuItem pid="edge-del" icon={<Trash2 size={14} />} label={t('nodemenu.delete', 'Sil')} danger action={del} />
     </>
   );
 }
 
 /* ===================== Node ===================== */
-function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, onDelete, textOnly }) {
+function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, onDelete }) {
+  const { t } = useLabels();
   const [showPreview, setShowPreview] = useState(false);
   if (!node) return <div className="sel-ctx-empty">Node tapılmadı.</div>;
   const { shape, style } = nodeView(node);
@@ -452,77 +433,19 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
     setSections(next);
   }
 
-  if (textOnly) {
-    // Editors change existing text only: node label + popup section texts.
-    // No shape/size/colour/icons, no add/remove/reorder, no delete.
-    return (
-      <>
-        <MenuItem pid="text" icon={<Type size={14} />} label="Mətn" openItem={openItem} setOpenItem={setOpenItem} side={side}>
-          <div className="field-row col">
-            <label>Mətn</label>
-            <textarea rows={3} value={node.text} onChange={e => patchText(e.target.value)} />
-          </div>
-          <div className="hint">Canvas-da mətnə iki dəfə klikləyərək birbaşa da redaktə edə bilərsiniz.</div>
-        </MenuItem>
-
-        <MenuItem pid="popup" icon={<PopupIcon size={14} />} label="Popup" openItem={openItem} setOpenItem={setOpenItem} side={side}>
-          <div className="sec-editor">
-            <div className="sec-editor-head">
-              <input className="sec-title" value={info.generalTitle || 'Ümumi məlumat'}
-                onChange={e => patchInfo('generalTitle', e.target.value)} placeholder="Bölmə adı" />
-            </div>
-            <textarea rows={4} placeholder="Hər abzas boş sətirlə ayrılır"
-              value={(info.general || []).join('\n\n')}
-              onChange={e => patchInfo('general', e.target.value.split('\n\n').filter(Boolean))} />
-          </div>
-
-          {sections.map((s, i) => (
-            <div className="sec-editor" key={s.id || i}>
-              <div className="sec-editor-head">
-                <input className="sec-title" value={s.title}
-                  onChange={e => patchSection(i, { title: e.target.value })} placeholder="Bölmə adı" />
-              </div>
-              <textarea rows={3}
-                placeholder={s.type === 'list' ? 'Hər sətir ayrı bənd' : 'Hər abzas boş sətirlə ayrılır'}
-                value={(s.items || []).join(s.type === 'list' ? '\n' : '\n\n')}
-                onChange={e => patchSection(i, {
-                  items: e.target.value.split(s.type === 'list' ? '\n' : '\n\n').filter(Boolean)
-                })} />
-            </div>
-          ))}
-
-          <div className="sec-editor">
-            <div className="sec-editor-head">
-              <input className="sec-title" value={info.risksTitle || 'Mümkün risklər'}
-                onChange={e => patchInfo('risksTitle', e.target.value)} placeholder="Bölmə adı (məcburi deyil)" />
-            </div>
-            <textarea rows={3} placeholder="Hər sətir ayrı risk (boş buraxsanız görünməyəcək)"
-              value={(info.risks || []).join('\n')}
-              onChange={e => patchInfo('risks', e.target.value.split('\n').filter(Boolean))} />
-          </div>
-
-          <button className="btn preview-btn" onClick={() => setShowPreview(v => !v)}>
-            <Eye size={14} /><span>{showPreview ? 'Önizləməni bağla' : 'Popup önizləməsi'}</span>
-          </button>
-          {showPreview && <PopupPreview node={node} />}
-        </MenuItem>
-      </>
-    );
-  }
-
   return (
     <>
-      <MenuItem pid="shape" icon={<Square size={14} />} label="Forma/Stil" openItem={openItem} setOpenItem={setOpenItem} side={side}>
+      <MenuItem pid="shape" icon={<Square size={14} />} label={t('nodemenu.shape_tab', 'Forma/Stil')} openItem={openItem} setOpenItem={setOpenItem} side={side}>
         <h4 className="editor-title">
           <Icon name={node.icon || 'Square'} size={15} /> Node #{node.id}
-          <span className={`type-badge ${shape} s-${style}`}>{SHAPE_LABEL[shape]} · {STYLE_LABEL[style]}</span>
+          <span className={`type-badge ${shape} s-${style}`}>{t(`shape.${shape}`, SHAPE_LABEL[shape])} · {t(`style.${style}`, STYLE_LABEL[style])}</span>
         </h4>
         <div className="field-row two">
           <div><label>ID</label><input defaultValue={node.id} onBlur={e => changeId(e.target.value)} /></div>
           <div>
             <label>Forma</label>
             <select value={shape} onChange={e => setShapeStyle(e.target.value, style)}>
-              {SHAPES.map(s => <option key={s} value={s}>{SHAPE_LABEL[s]}</option>)}
+              {SHAPES.map(s => <option key={s} value={s}>{t(`shape.${s}`, SHAPE_LABEL[s])}</option>)}
             </select>
           </div>
         </div>
@@ -531,14 +454,14 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
           <div className="seg-toggle">
             {STYLES.map(s => (
               <button key={s} type="button" className={style === s ? 'on' : ''} onClick={() => setShapeStyle(shape, s)}>
-                {STYLE_LABEL[s]}
+                {t(`style.${s}`, STYLE_LABEL[s])}
               </button>
             ))}
           </div>
         </div>
       </MenuItem>
 
-      <MenuItem pid="size" icon={<Maximize2 size={14} />} label="Ölçü/Panel" openItem={openItem} setOpenItem={setOpenItem} side={side}>
+      <MenuItem pid="size" icon={<Maximize2 size={14} />} label={t('nodemenu.size_tab', 'Ölçü/Panel')} openItem={openItem} setOpenItem={setOpenItem} side={side}>
         <div className="field-row four">
           <div><label>X</label><input type="number" value={node.x} onChange={e => patch('x', Number(e.target.value))} /></div>
           <div><label>Y</label><input type="number" value={node.y} onChange={e => patch('y', Number(e.target.value))} /></div>
@@ -549,7 +472,7 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
           Canvas-da node-un künclərindəki tutacaqları sürükləyərək ölçünü birbaşa dəyişə bilərsiniz.
         </div>
         <button className="btn" style={{ marginBottom: 10 }} onClick={applyWidthToAll}>
-          <Maximize2 size={14} /> <span>Bu eni bütün "{SHAPE_LABEL[shape]}" node-lara tətbiq et</span>
+          <Maximize2 size={14} /> <span>Bu eni bütün "{t(`shape.${shape}`, SHAPE_LABEL[shape])}" node-lara tətbiq et</span>
         </button>
         <div className="field-row col">
           <label>Panel</label>
@@ -560,13 +483,13 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
         </div>
       </MenuItem>
 
-      <MenuItem pid="color" icon={<Palette size={14} />} label="Rəng" openItem={openItem} setOpenItem={setOpenItem} side={side}>
+      <MenuItem pid="color" icon={<Palette size={14} />} label={t('nodemenu.color_tab', 'Rəng')} openItem={openItem} setOpenItem={setOpenItem} side={side}>
         <ColorField label="Node rəngi (fərdi)" value={node.color || ''}
           onChange={v => patch('color', v)} onClear={() => patch('color', '')} />
         <div className="hint" style={{ marginTop: 8 }}>Bu rəng yalnız bu node-a tətbiq olunur.</div>
       </MenuItem>
 
-      <MenuItem pid="text" icon={<Type size={14} />} label="Mətn" openItem={openItem} setOpenItem={setOpenItem} side={side}>
+      <MenuItem pid="text" icon={<Type size={14} />} label={t('nodemenu.text_tab', 'Mətn')} openItem={openItem} setOpenItem={setOpenItem} side={side}>
         <div className="field-row col">
           <label>Mətn</label>
           <textarea rows={3} value={node.text} onChange={e => patchText(e.target.value)} />
@@ -574,7 +497,7 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
         <div className="hint">En sabit qalır, hündürlük mətnə görə avtomatik artır. Canvas-da mətnə iki dəfə klikləyərək birbaşa da redaktə edə bilərsiniz.</div>
       </MenuItem>
 
-      <MenuItem pid="popup" icon={<PopupIcon size={14} />} label="Popup" openItem={openItem} setOpenItem={setOpenItem} side={side}>
+      <MenuItem pid="popup" icon={<PopupIcon size={14} />} label={t('nodemenu.popup_tab', 'Popup')} openItem={openItem} setOpenItem={setOpenItem} side={side}>
         {/* General — no longer a mandatory/fixed block: it has a colour and can
             be emptied like any other section. */}
         <div className="sec-editor">
@@ -657,7 +580,7 @@ function NodeMenu({ node, process, updateProcess, openItem, setOpenItem, side, o
         {showPreview && <PopupPreview node={node} />}
       </MenuItem>
 
-      <MenuItem pid="node-del" icon={<Trash2 size={14} />} label="Sil" danger action={deleteNode} />
+      <MenuItem pid="node-del" icon={<Trash2 size={14} />} label={t('nodemenu.delete', 'Sil')} danger action={deleteNode} />
     </>
   );
 }

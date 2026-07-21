@@ -25,6 +25,7 @@ import { getToken } from '../api/client.js';
 import { repackLanes as repackLanesNodes } from './laneRepack.js';
 import { autoNodeHeight } from './nodeMeasure.js';
 import { shapeImage } from './shapeImages.js';
+import { useLabels } from '../labels/LabelsContext.jsx';
 
 /* ============ Pill: navbar tab button. Its content is NOT a dropdown —
    the AdminPanel renders the open pill's content in a right sidebar. ============ */
@@ -46,6 +47,7 @@ function PillTab({ pid, icon, label, badge, openPill, setOpenPill }) {
 export default function AdminPanel({ process, selection, setSelection, updateProcess, onClose, onHeightChange, onSidebarChange, addStyle, setAddStyle, onAddShape, onArchive }) {
   const [openPill, setOpenPill] = useState(null);
   const rootRef = useRef(null);
+  const { t } = useLabels();
 
   useEffect(() => {
     if (onSidebarChange) onSidebarChange(!!openPill);
@@ -64,16 +66,16 @@ export default function AdminPanel({ process, selection, setSelection, updatePro
   }, [onHeightChange]);
 
   const SECTIONS = [
-    { pid: 'diagram', icon: <Layers size={14} />, label: 'Başliq',
+    { pid: 'diagram', icon: <Layers size={14} />, label: t('panel.tab.diagram', 'Başliq'),
       content: <DiagramMetaSection process={process} updateProcess={updateProcess} onArchive={onArchive} /> },
-    { pid: 'theme', icon: <Palette size={14} />, label: 'Rəng Seçimi',
+    { pid: 'theme', icon: <Palette size={14} />, label: t('panel.tab.theme', 'Rəng Seçimi'),
       content: <ThemeSection process={process} updateProcess={updateProcess} /> },
-    { pid: 'panels', icon: <LayoutList size={14} />, label: 'Sütunlar', badge: process.lanes.length,
+    { pid: 'panels', icon: <LayoutList size={14} />, label: t('panel.tab.panels', 'Sütunlar'), badge: process.lanes.length,
       content: <PanelsSection process={process} selection={selection} setSelection={setSelection} updateProcess={updateProcess} /> },
-    { pid: 'addnode', icon: <Shapes size={14} />, label: 'Proseslər',
+    { pid: 'addnode', icon: <Shapes size={14} />, label: t('panel.tab.addnode', 'Proseslər'),
       content: <NodesSection process={process} selection={selection} setSelection={setSelection}
         updateProcess={updateProcess} addStyle={addStyle} setAddStyle={setAddStyle} onAddShape={onAddShape} /> },
-    { pid: 'export', icon: <Share2 size={14} />, label: 'Paylaş',
+    { pid: 'export', icon: <Share2 size={14} />, label: t('panel.tab.export', 'Paylaş'),
       content: <ExportShareSection process={process} /> },
     // { pid: 'canvas', icon: <SlidersHorizontal size={14} />, label: 'Canvas ölçüsü',
     //   content: <CanvasSection process={process} updateProcess={updateProcess} /> },
@@ -169,24 +171,25 @@ export function ColorField({ label, value, onChange, onClear, placeholder = 'Sta
 
 /* ===================== DİAQRAM meta ===================== */
 function DiagramMetaSection({ process, updateProcess, onArchive }) {
+  const { t } = useLabels();
   return (
     <>
       <div className="field-row col">
-        <label>Sənədin Adı</label>
+        <label>{t('meta.doc_name_label', 'Sənədin Adı')}</label>
         <textarea rows={2} value={process.title || ''}
           onChange={e => updateProcess(p => ({ ...p, title: e.target.value }), 'meta-title')}
           placeholder="Sənədin adını yazın" />
       </div>
       <div className="field-row col">
-        <label>Sənədin Nömrəsi</label>
+        <label>{t('meta.doc_number_label', 'Sənədin Nömrəsi')}</label>
         <input value={process.subtitle || ''}
           onChange={e => updateProcess(p => ({ ...p, subtitle: e.target.value }), 'meta-subtitle')}
           placeholder="məs. ALM-X1-2-3S" />
       </div>
-      <div className="hint">Dəyişikliklər "Yadda saxla" düyməsi ilə qeyd olunur.</div>
+      <div className="hint">{t('meta.save_hint', 'Dəyişikliklər "Yadda saxla" düyməsi ilə qeyd olunur.')}</div>
       {onArchive && (
         <button className="btn" style={{ marginTop: 14 }} onClick={onArchive}>
-          <Archive size={14} /> <span>Bu diaqramı arxivə köçür</span>
+          <Archive size={14} /> <span>{t('meta.archive_btn', 'Bu diaqramı arxivə köçür')}</span>
         </button>
       )}
     </>
@@ -195,6 +198,7 @@ function DiagramMetaSection({ process, updateProcess, onArchive }) {
 
 /* ===================== RƏNG / TEMA ===================== */
 function ThemeSection({ process, updateProcess }) {
+  const { t } = useLabels();
   const theme = process.theme || {};
   function setTheme(patch) {
     updateProcess(p => ({ ...p, theme: { ...(p.theme || {}), ...patch } }), 'theme');
@@ -210,13 +214,13 @@ function ThemeSection({ process, updateProcess }) {
   return (
     <div className="theme-panel">
       <div className="hint" style={{ marginBottom: 14 }}>
-        Bütün diaqrama tətbiq olunan rənglər. Ayrı-ayrı node və oxlar öz rənglərini üstələyə bilər.
+        {t('theme.hint', 'Bütün diaqrama tətbiq olunan rənglər. Ayrı-ayrı node və oxlar öz rənglərini üstələyə bilər.')}
       </div>
 
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.node || 'var(--primary)' }} />
-          <span>Proseslərin rəngini dəyişin</span>
+          <span>{t('theme.node_label', 'Proseslərin rəngini dəyişin')}</span>
         </div>
         <ColorField label="" value={theme.node || ''}
           onChange={v => setTheme({ node: v })} onClear={() => setTheme({ node: '' })} />
@@ -225,7 +229,7 @@ function ThemeSection({ process, updateProcess }) {
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.edge || 'var(--primary)' }} />
-          <span>Yalnız oxların rəngini dəyişin</span>
+          <span>{t('theme.edge_label', 'Yalnız oxların rəngini dəyişin')}</span>
         </div>
         <ColorField label="" value={theme.edge || ''}
           onChange={v => setTheme({ edge: v })} onClear={() => setTheme({ edge: '' })} />
@@ -234,20 +238,20 @@ function ThemeSection({ process, updateProcess }) {
       <div className="theme-card">
         <div className="theme-card-head">
           <span className="theme-dot" style={{ background: theme.lane || 'var(--primary)' }} />
-          <span>Sütunların rəngini dəyişin</span>
+          <span>{t('theme.lane_label', 'Sütunların rəngini dəyişin')}</span>
         </div>
         <ColorField label="" value={theme.lane || ''}
           onChange={v => setTheme({ lane: v })} onClear={() => setTheme({ lane: '' })} />
       </div>
 
       <div className="theme-card theme-all-card">
-        <div className="theme-card-head"><span>Hamısına birdən tətbiq et</span></div>
+        <div className="theme-card-head"><span>{t('theme.all_label', 'Hamısına birdən tətbiq et')}</span></div>
         <ColorField label="" value=""
           onChange={v => applyAll(v)} onClear={() => {}} placeholder="Bir rəng seç" />
       </div>
 
       <button className="btn" onClick={resetAll} style={{ marginTop: 6 }}>
-        <RotateCcw size={14} /> <span>Standart rəngə qaytar</span>
+        <RotateCcw size={14} /> <span>{t('theme.reset_btn', 'Standart rəngə qaytar')}</span>
       </button>
     </div>
   );
@@ -378,6 +382,7 @@ function PanelsSection({ process, selection, setSelection, updateProcess }) {
 
 /* ===================== NODE ƏLAVƏ ET ===================== */
 function NodesSection({ process, selection, setSelection, updateProcess, addStyle, setAddStyle, onAddShape }) {
+  const { t } = useLabels();
   // If a single node is selected, this panel edits THAT node (change its shape
   // or border) instead of adding a brand-new one.
   const selectedNode = selection?.kind === 'node'
@@ -440,11 +445,11 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
       )}
 
       <div className="field-row col">
-        <label className="lbl">Sərhəd:</label>
+        <label className="lbl">{t('shapes.border_label', 'Sərhəd:')}</label>
         <div className="seg-toggle">
           {STYLES.map(s => (
             <button key={s} type="button" className={style === s ? 'on' : ''} onClick={() => setStyle(s)}>
-              {STYLE_LABEL[s]}
+              {t(`style.${s}`, STYLE_LABEL[s])}
             </button>
           ))}
         </div>
@@ -452,12 +457,12 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
       <p className="node-types-intro">
         {selectedNode
           ? <>Aşağıdan forma seçin — seçili <b>#{selectedNode.id}</b> node-un forması dəyişəcək (yeni node əlavə olunmayacaq).</>
-          : <>Formanı canvas üzərinə <b>sürükləyin</b> — buraxdığınız yerə əlavə olunur.
-             Yaxud <b>klikləyin</b> — ekranda görünən panelə avtomatik əlavə olunur.</>}
+          : t('shapes.drag_hint', 'Formanı canvas üzərinə sürükləyin — buraxdığınız yerə əlavə olunur. Yaxud klikləyin — ekranda görünən panelə avtomatik əlavə olunur.')}
       </p>
       <div className="node-types img-grid">
         {SHAPES.map(shape => {
           const isCur = selectedNode && nodeView(selectedNode).shape === shape;
+          const shapeLabel = t(`shape.${shape}`, SHAPE_LABEL[shape]);
           return (
             <button
               key={shape}
@@ -466,12 +471,12 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
               onDragStart={e => !selectedNode && onDragStart(e, shape)}
               onClick={() => pickShape(shape)}
               title={selectedNode
-                ? `Seçili node-u ${SHAPE_LABEL[shape]} formasına dəyiş`
-                : `${SHAPE_LABEL[shape]} — sürükləyin və ya klikləyin`}>
+                ? `Seçili node-u ${shapeLabel} formasına dəyiş`
+                : `${shapeLabel} — sürükləyin və ya klikləyin`}>
               <span className="shape-thumb">
-                <img src={shapeImage(shape)} alt={SHAPE_LABEL[shape]} draggable={false} />
+                <img src={shapeImage(shape)} alt={shapeLabel} draggable={false} />
               </span>
-              <span>{SHAPE_LABEL[shape]}</span>
+              <span>{shapeLabel}</span>
             </button>
           );
         })}

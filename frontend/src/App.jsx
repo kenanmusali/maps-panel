@@ -7,6 +7,8 @@ import Home from './components/Home.jsx';
 import Diagram from './components/Diagram.jsx';
 import PdfList from './components/pdfs/PdfList.jsx';
 import TemplateList from './components/pdfs/TemplateList.jsx';
+import LabelEditorPage from './components/LabelEditorPage.jsx';
+import { LabelsProvider } from './labels/LabelsContext.jsx';
 
 export default function App() {
   // views: 'login' | 'hub' | 'diagrams' | 'pdfs' | 'templates' | 'files' | 'diagram'
@@ -105,41 +107,55 @@ export default function App() {
     setView('hub');
   }
 
-  if (bootChecking) {
-    return <div className="boot-screen">Yüklənir...</div>;
+  function renderView() {
+    if (bootChecking) {
+      return <div className="boot-screen">Yüklənir...</div>;
+    }
+
+    if (view === 'login') {
+      return <Login onLogin={onLogin} />;
+    }
+
+    // editor_2 only manages interface text — it never sees the diagram
+    // hub/admin content, just its own label-editor screen.
+    if (user?.role === 'editor_2') {
+      return <LabelEditorPage onLogout={onLogout} />;
+    }
+
+    if (view === 'hub') {
+      return <SectionsHub onPick={pickSection} onLogout={onLogout} />;
+    }
+
+    if (view === 'diagrams') {
+      return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} />;
+    }
+
+    if (view === 'pdfs') {
+      return <PdfList onBack={backToHub} onLogout={onLogout} />;
+    }
+
+    if (view === 'templates') {
+      return <TemplateList onBack={backToHub} onLogout={onLogout} />;
+    }
+
+    if (view === 'diagram') {
+      return (
+        <Diagram
+          processId={processId}
+          focusNodeId={focusNodeId}
+          onBack={backToDiagrams}
+          onLogout={onLogout}
+          user={user}
+        />
+      );
+    }
+
+    return null;
   }
 
-  if (view === 'login') {
-    return <Login onLogin={onLogin} />;
-  }
-
-  if (view === 'hub') {
-    return <SectionsHub onPick={pickSection} onLogout={onLogout} />;
-  }
-
-  if (view === 'diagrams') {
-    return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} />;
-  }
-
-  if (view === 'pdfs') {
-    return <PdfList onBack={backToHub} onLogout={onLogout} />;
-  }
-
-  if (view === 'templates') {
-    return <TemplateList onBack={backToHub} onLogout={onLogout} />;
-  }
-
-  if (view === 'diagram') {
-    return (
-      <Diagram
-        processId={processId}
-        focusNodeId={focusNodeId}
-        onBack={backToDiagrams}
-        onLogout={onLogout}
-        user={user}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <LabelsProvider enabled={!!user}>
+      {renderView()}
+    </LabelsProvider>
+  );
 }

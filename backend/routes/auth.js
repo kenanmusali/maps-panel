@@ -18,17 +18,17 @@ const USERS = [
     role: 'admin'
   },
   {
-    // Editor accounts — same "password == username" pattern. An editor may
-    // only change existing text (titles, node/edge labels, statuses); it can
-    // NOT create, delete, upload, reorder or edit diagram structure.
-    username: 'editor_2',
-    password: 'editor_2',
-    role: 'editor'
-  },
-  {
     username: 'user',
     password: 'user123',
     role: 'viewer'
+  },
+  {
+    // Interface-text editor. Can only rename static UI labels (button
+    // text, panel-tab names, popup headings, etc.) via the label-editor
+    // screen — cannot touch diagram content (that stays admin's job).
+    username: 'editor_2',
+    password: 'editor_2',
+    role: 'editor_2'
   }
 ];
 

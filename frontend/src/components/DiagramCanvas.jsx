@@ -3,6 +3,7 @@ import { useRef, useState, useMemo, useEffect } from 'react';
 import { nodeView, SVG_SHAPES } from './nodeStyle.js';
 import { deriveAccentVars } from './colorUtils.js';
 import { shapeImage } from './shapeImages.js';
+import { useLabels } from '../labels/LabelsContext.jsx';
 
 const SNAP_SIZE = 10;
 const RAIL_W = 56;
@@ -25,7 +26,6 @@ export default function DiagramCanvas({
   selectedEdgeId,          // index of the selected edge
   modalNodeId,
   editMode,
-  structuralEdit = true,   // false → text-only editing (editors): no move/resize/connect/drop/delete
   onNodeClick,
   onLaneClick,
   onEdgeClick,
@@ -49,6 +49,7 @@ export default function DiagramCanvas({
   deleteSelectedNodes,     // () => void
   presentActiveId = null   // id of the node currently spotlighted in presentation (animates its incoming arrow)
 }) {
+  const { t } = useLabels();
   const canvasRef = useRef(null);
   const railLayerRef = useRef(null);
   const [drag, setDrag] = useState(null);
@@ -121,7 +122,7 @@ export default function DiagramCanvas({
     try { return JSON.parse(raw); } catch { return null; }
   }
   function onCanvasDragOver(e) {
-    if (!editMode || !structuralEdit || !onCanvasDropShape) return;
+    if (!editMode || !onCanvasDropShape) return;
     const types = Array.from(e.dataTransfer.types || []);
     if (!types.includes('application/x-map-shape')) return;
     e.preventDefault();
@@ -136,7 +137,7 @@ export default function DiagramCanvas({
     setDropPreview({ shape, x: pt.x, y: pt.y });
   }
   function onCanvasDrop(e) {
-    if (!editMode || !structuralEdit || !onCanvasDropShape) return;
+    if (!editMode || !onCanvasDropShape) return;
     const payload = shapeFromEvent(e);
     setDropPreview(null);
     if (!payload) return;
@@ -163,7 +164,7 @@ export default function DiagramCanvas({
   }
 
   function onMouseDownNode(e, node) {
-    if (!editMode || !structuralEdit) return;
+    if (!editMode) return;
     // Additive modifier click is handled in onClick (toggle) — don't start a drag.
     if (e.shiftKey || e.metaKey || e.ctrlKey) { e.stopPropagation(); return; }
     e.preventDefault();
@@ -183,7 +184,7 @@ export default function DiagramCanvas({
   }
 
   function onHandleMouseDown(e, node, side) {
-    if (!editMode || !structuralEdit) return;
+    if (!editMode) return;
     e.preventDefault();
     e.stopPropagation();
     const from = anchor(node, side);
@@ -192,7 +193,7 @@ export default function DiagramCanvas({
   }
 
   function onResizeMouseDown(e, node, corner) {
-    if (!editMode || !structuralEdit) return;
+    if (!editMode) return;
     e.preventDefault();
     e.stopPropagation();
     setResize({
@@ -233,7 +234,7 @@ export default function DiagramCanvas({
   }
 
   function onEdgeHandleMouseDown(e, edgeIndex, end, fromPoint) {
-    if (!editMode || !structuralEdit) return;
+    if (!editMode) return;
     e.preventDefault();
     e.stopPropagation();
     setLink({ reconnect: { edgeIndex, end }, from: fromPoint, cur: fromPoint, overId: null });
@@ -412,7 +413,7 @@ export default function DiagramCanvas({
       onMouseDown={(e) => {
         // Start a rubber-band selection when pressing on empty canvas in edit
         // mode (not on a node/handle, which stopPropagation on their own).
-        if (!editMode || !structuralEdit) return;
+        if (!editMode) return;
         if (e.button !== 0) return;
         if (e.target !== e.currentTarget && !e.target.classList?.contains('lane-row')) return;
         const pt = toCanvasPoint(e);
@@ -553,7 +554,7 @@ export default function DiagramCanvas({
         const isPresentSource = presentActiveId != null && !isSelected && presentSourceIds.has(String(node.id));
         const isLinkTarget = link && String(link.overId) === String(node.id) &&
           (link.reconnect || String(link.fromId) !== String(node.id));
-        const showHandles = editMode && structuralEdit && !drag && !resize && (String(hoverNodeId) === String(node.id) || (link && !link.reconnect && String(link.fromId) === String(node.id)));
+        const showHandles = editMode && !drag && !resize && (String(hoverNodeId) === String(node.id) || (link && !link.reconnect && String(link.fromId) === String(node.id)));
 
         const { shape, style } = nodeView(node);
         const isEditingText = editingId === node.id;
@@ -604,10 +605,10 @@ export default function DiagramCanvas({
               if (drag?.moved) return;
               if (didLinkRef.current) return;
               const rect = e.currentTarget.getBoundingClientRect();
-              const additive = (e.shiftKey || e.metaKey || e.ctrlKey) && structuralEdit;
+              const additive = e.shiftKey || e.metaKey || e.ctrlKey;
               // Edit mode: left click only selects (move/resize); the context
               // menu popup opens with RIGHT click only.
-              onNodeClick(node.id, rect, (editMode && structuralEdit) ? false : true, { additive });
+              onNodeClick(node.id, rect, editMode ? false : true, { additive });
             }}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -666,7 +667,7 @@ export default function DiagramCanvas({
               </div>
             ))}
 
-            {editMode && structuralEdit && !drag && !resize && isSelected && !isEditingText && CORNERS.map(corner => (
+            {editMode && !drag && !resize && isSelected && !isEditingText && CORNERS.map(corner => (
               <div
                 key={corner}
                 className={`resize-handle ${corner}`}
@@ -1374,7 +1375,7 @@ function MultiNodeMenu({ x, y, count, onClose, onColor, onStyle, onDelete }) {
     >
       <div className="multi-menu-head">{count} node seçildi</div>
 
-      <div className="multi-menu-label">Rəng</div>
+      <div className="multi-menu-label">{t('nodemenu.color_tab', 'Rəng')}</div>
       <div className="multi-menu-swatches">
         {MULTI_SWATCHES.map(c => (
           <button key={c} className="mm-swatch" style={{ background: c }} title={c}
@@ -1383,7 +1384,7 @@ function MultiNodeMenu({ x, y, count, onClose, onColor, onStyle, onDelete }) {
         <button className="mm-swatch mm-clear" title="Standart" onClick={() => onColor('')} />
       </div>
 
-      <div className="multi-menu-label">Sərhəd</div>
+      <div className="multi-menu-label">{t('multiselect.border_label', 'Sərhəd')}</div>
       <div className="multi-menu-styles">
         {MULTI_STYLES.map(([s, label]) => (
           <button key={s} className="mm-style" onClick={() => onStyle(s)}>{label}</button>

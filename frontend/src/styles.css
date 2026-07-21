@@ -2383,17 +2383,36 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 /* status cell inside a diagram / pdf row */
 .row-status { display: inline-flex; align-items: center;  }
 
-/* Editor role: text-only edit-mode notice shown just under the navbar. */
-.editor-mode-banner {
-  position: fixed; top: calc(var(--topbar-h) + 6px); left: 50%; transform: translateX(-50%);
-  z-index: 45; display: flex; align-items: center; gap: 10px;
+/* ===================== Label Editor (editor_2 role) ===================== */
+.label-editor-page { min-height: 100vh; background: var(--bg-soft); }
+.label-editor-title {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 13.5px; color: var(--text-primary);
+  padding: 0 4px;
+}
+.label-editor-body { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+.label-editor-hint {
+  font-size: 12.5px; color: var(--text-muted); line-height: 1.5;
   background: var(--surface); border: 1px solid var(--border-soft);
-  border-radius: 14px; padding: 9px 14px; font-size: 12.5px; font-weight: 600;
-  color: var(--text-secondary); max-width: min(94vw, 620px);
-  box-shadow: 2px 2px 50px rgba(0, 0, 0, 0.30);
-  animation: pop-in 0.3s var(--ease);
+  border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 22px;
 }
-.editor-mode-banner .editor-mode-icon {
-  display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0;
-  border-radius: 8px; background: rgba(28,75,100,0.12); color: var(--brand, #1c4b64);
+.label-editor-group { margin-bottom: 22px; }
+.label-editor-group h4 {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-muted); margin: 0 0 8px 2px;
 }
+.label-editor-list {
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); overflow: hidden;
+}
+.label-editor-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; padding: 11px 14px; border: none;
+  border-bottom: 1px solid var(--border-soft); background: transparent; cursor: pointer;
+  font-size: 13px; color: var(--text-primary);
+}
+.label-editor-list .label-editor-row:last-child { border-bottom: none; }
+.label-editor-row:hover { background: var(--bg-soft); }
+.label-editor-row-text { flex: 1; word-break: break-word; }
+.label-editor-row-icon { flex-shrink: 0; color: var(--text-muted); }
+.label-editor-default-hint { font-size: 11.5px; color: var(--text-muted); margin-top: -4px; }

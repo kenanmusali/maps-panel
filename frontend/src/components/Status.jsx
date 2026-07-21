@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { Clock,Signature, CheckCircle2, AlertCircle,CircleX, ChevronDown } from './icons.jsx';
+import { useLabels } from '../labels/LabelsContext.jsx';
 
 // Single source of truth for the three item statuses used across the
 // diagrams (İş Axışları) and PDF (Normativ Sənədlər) sections.
 //   progress → in progress   done → finished   notdone → not finished
 export const STATUS_META = {
-  progress: { label: 'Müzakirədə', Icon: AlertCircle,        cls: 'progress' },
+  progress: { id: 'status.progress', default: 'Müzakirədə', Icon: AlertCircle,        cls: 'progress' },
 
-  done:     { label: 'Təsdiqlənmiş ', Icon: CheckCircle2, cls: 'done' },
+  done:     { id: 'status.done', default: 'Təsdiqlənmiş ', Icon: CheckCircle2, cls: 'done' },
 
-  notdone:  { label: 'Təsdqlənməmiş',   Icon: CircleX,  cls: 'notdone' },
+  notdone:  { id: 'status.notdone', default: 'Təsdqlənməmiş',   Icon: CircleX,  cls: 'notdone' },
 
-  sign:     { label: 'İmza Prosesində',  Icon: Signature, cls: 'sign' },
+  sign:     { id: 'status.sign', default: 'İmza Prosesində',  Icon: Signature, cls: 'sign' },
 };
 
 export const STATUS_ORDER = ['progress', 'done', 'notdone', 'sign'];
@@ -22,9 +23,11 @@ function norm(value) {
 
 // Read-only coloured pill with icon + label. Renders nothing when no status.
 export function StatusBadge({ value, size = 14 }) {
+  const { t } = useLabels();
   const v = norm(value);
   if (!v) return null;
-  const { label, Icon, cls } = STATUS_META[v];
+  const { default: def, Icon, cls, id } = STATUS_META[v];
+  const label = t(id, def);
   return (
     <span className={`status-badge ${cls}`} title={label}>
       <Icon size={size} />
@@ -36,6 +39,7 @@ export function StatusBadge({ value, size = 14 }) {
 // Interactive control for admins. Shows the current status and, on click,
 // a small menu to pick a status or clear it. Viewers get <StatusBadge> instead.
 export function StatusControl({ value, editable, onChange, size = 14 }) {
+  const { t } = useLabels();
   const v = norm(value);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -50,6 +54,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
   if (!editable) return <StatusBadge value={v} size={size} />;
 
   const meta = v ? STATUS_META[v] : null;
+  const metaLabel = meta ? t(meta.id, meta.default) : null;
 
   function pick(next) {
     setOpen(false);
@@ -65,7 +70,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
         onClick={() => setOpen(o => !o)}
       >
         {meta ? <meta.Icon size={size} /> : <Clock size={size} />}
-        <span>{meta ? meta.label : 'Status'}</span>
+        <span>{meta ? metaLabel : t('status.placeholder', 'Status')}</span>
         <ChevronDown size={13} />
       </button>
       {open && (
@@ -79,7 +84,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
                 className={`status-opt ${m.cls} ${v === k ? 'active' : ''}`}
                 onClick={() => pick(k)}
               >
-                <m.Icon size={14} /><span>{m.label}</span>
+                <m.Icon size={14} /><span>{t(m.id, m.default)}</span>
               </button>
             );
           })}
@@ -88,7 +93,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
             className={`status-opt none ${!v ? 'active' : ''}`}
             onClick={() => pick(null)}
           >
-            <span>Statussuz</span>
+            <span>{t('status.none', 'Statussuz')}</span>
           </button>
         </div>
       )}

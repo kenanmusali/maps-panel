@@ -6,6 +6,7 @@ import {
   Play, Pause, SkipBack, SkipForward, RotateCcw, MonitorPlay, Clock
 } from './icons.jsx';
 import { LogoFull } from './Logo.jsx';
+import { useLabels } from '../labels/LabelsContext.jsx';
 import { api, setToken } from '../api/client.js';
 import DiagramCanvas, { edgePoints, polylinesCross } from './DiagramCanvas.jsx';
 import NodeModal from './NodeModal.jsx';
@@ -124,8 +125,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   const role = localStorage.getItem('role');
   const isViewer = role === 'viewer';
   const isAdmin = role === 'admin';
-  const isEditor = role === 'editor';
-  const canEdit = isAdmin || isEditor; // may change existing text (labels, titles, status)
+  const { t } = useLabels();
 
   const [process, setProcess] = useState(null);
   const [status, setStatus] = useState(null);
@@ -286,7 +286,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
       const key = e.key.toLowerCase();
 
       // Delete / Backspace removes the current selection (not while typing).
-      if (isAdmin && (e.key === 'Delete' || e.key === 'Backspace') && !typing) {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !typing) {
         if (selectedIdsRef.current.length) { e.preventDefault(); deleteSelectedNodes(); return; }
         // Fix #10 — a selected arrow (edge) is removed with Delete too.
         if (selectionRef.current?.kind === 'edge') { e.preventDefault(); deleteEdgeByIndex(selectionRef.current.id); return; }
@@ -294,7 +294,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
         return;
       }
       // Fix #9 — move the selected node(s) with the arrow keys.
-      if (isAdmin && !typing && !mod &&
+      if (!typing && !mod &&
         (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         const ids = selectedIdsRef.current.length
           ? selectedIdsRef.current
@@ -316,7 +316,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
       if (!mod) return;
       if (typing) return;
       // Ctrl/Cmd+A selects all nodes.
-      if (isAdmin && key === 'a') { e.preventDefault(); selectAllNodes(); return; }
+      if (key === 'a') { e.preventDefault(); selectAllNodes(); return; }
       if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); }
     }
@@ -456,7 +456,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
     if (isViewer) return;
     setEditMode(prev => {
       const next = !prev;
-      if (next && isAdmin) setPanelOpen(true); // entering edit → editor panel opens right away (admin only)
+      if (next) setPanelOpen(true); // entering edit → editor panel opens right away
       return next;
     });
     setSelection(null);
@@ -1259,22 +1259,22 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
               title={fitWidth ? 'Klassik görünüş' : 'Tam en (ekrana sığdır)'}
             >
               {fitWidth ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              <span>{fitWidth ? 'Klassik' : 'Tam en'}</span>
+              <span>{fitWidth ? t('topbar.fullwidth_off', 'Klassik') : t('topbar.fullwidth_on', 'Tam en')}</span>
             </button>
           )}
 
-          {isAdmin && editMode && !panelOpen && (
+          {!isViewer && editMode && !panelOpen && (
             <button
               className="pill-chip edit-chip nospace"
               onClick={() => setPanelOpen(true)}
               title="Paneli aç"
             >
               <PanelRightOpen size={16} />
-              <span>Panel</span>
+              <span>{t('topbar.panel', 'Panel')}</span>
             </button>
           )}
 
-          {isAdmin && editMode && (
+          {!isViewer && editMode && (
             <div className="history-group">
               <button
                 className="hist-btn"
@@ -1297,14 +1297,14 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
 
           <AiButton active={aiOpen} onClick={() => setAiOpen(v => !v)} />
 
-          {!isEditor && process && process.nodes.length > 0 && (
+          {process && process.nodes.length > 0 && (
             <button
               className="pill-chip present-chip nospace edit-chip"
               onClick={startPresentation}
               title="Təqdimat rejimi — addımları avtomatik göstər"
             >
               <MonitorPlay size={16} />
-              <span>Təqdimat</span>
+              <span>{t('topbar.presentation', 'Təqdimat')}</span>
             </button>
           )}
 
@@ -1320,35 +1320,28 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
                   ? <CheckCircle2 size={16} />
                   : <Save size={16} />
               }
-              <span>{saving ? 'Saxlanılır...' : savedFlash ? 'Saxlanıldı' : 'Yadda saxla'}</span>
+              <span>{saving ? t('topbar.saving', 'Saxlanılır...') : savedFlash ? t('topbar.saved', 'Saxlanıldı') : t('topbar.save', 'Yadda saxla')}</span>
             </button>
           )}
 
           {!isViewer && (
             <button className="pill-chip edit-chip nospace" onClick={toggleEdit}>
               {editMode ? <Eye size={16} /> : <Edit3 size={16} />}
-              <span>{editMode ? 'Baxış' : 'Redaktə et'}</span>
+              <span>{editMode ? t('topbar.view', 'Baxış') : t('topbar.edit', 'Redaktə et')}</span>
             </button>
           )}
 
           {process && (
             <div className="topbar-status">
-              <StatusControl value={status} editable={canEdit} onChange={changeStatus} size={15} />
+              <StatusControl value={status} editable={isAdmin} onChange={changeStatus} size={15} />
             </div>
           )}
 
           <button className="logout-btn" onClick={logout}>
-            <LogOut size={16} /><span>Çıxış</span>
+            <LogOut size={16} /><span>{t('topbar.logout', 'Çıxış')}</span>
           </button>
         </div>
       </div>
-
-      {isEditor && editMode && !presenting && (
-        <div className="editor-mode-banner">
-          <span className="editor-mode-icon"><Edit3 size={15} /></span>
-          <span>Redaktə rejimi — yalnız mövcud mətnləri dəyişə bilərsiniz (node və ox adları). Dəyişiklikləri saxlamaq üçün “Yadda saxla”ya basın.</span>
-        </div>
-      )}
 
       {isAdmin && !presenting && (
         <AiSidebar
@@ -1390,7 +1383,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
           <div
             className={`diagram-container ${fitWidth && !editMode ? 'fit' : ''}`}
             ref={containerRef}
-            style={isAdmin && editMode && panelOpen ? { paddingTop: navbarH - 60, marginRight: sidebarOpen ? 400 : undefined } : undefined}
+            style={!isViewer && editMode && panelOpen ? { paddingTop: navbarH - 60, marginRight: sidebarOpen ? 400 : undefined } : undefined}
           >
             {loading && (
               <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>
@@ -1422,7 +1415,6 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
                   selectedEdgeId={editMode && selection?.kind === 'edge' ? selection.id : null}
                   modalNodeId={!editMode && selection?.kind === 'node' ? selection.id : null}
                   editMode={!isViewer && editMode}
-                  structuralEdit={isAdmin}
                   onNodeClick={onNodeClick}
                   onLaneClick={onLaneClick}
                   onEdgeClick={onEdgeClick}
@@ -1454,7 +1446,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
           </div>
         </div>
 
-        {isAdmin && editMode && panelOpen && process && (
+        {!isViewer && editMode && panelOpen && process && (
           <AdminPanel
             process={process}
             selection={selection}
@@ -1470,13 +1462,12 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
           />
         )}
 
-        {canEdit && editMode && selection && selection.menu !== false && process && !interacting && (
+        {!isViewer && editMode && selection && selection.menu !== false && process && !interacting && (
           <SelectionMenu
             selection={selection}
             process={process}
             updateProcess={updateProcess}
             setSelection={setSelection}
-            textOnly={isEditor}
             anchorRect={modalAnchorRect}
           />
         )}

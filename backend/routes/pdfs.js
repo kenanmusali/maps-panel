@@ -60,13 +60,6 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Editor OR admin — editors may change existing text but not structure.
-function requireEditor(req, res, next) {
-  const r = req.user?.role;
-  if (r !== 'admin' && r !== 'editor') return res.status(403).json({ error: 'Forbidden' });
-  next();
-}
-
 /* =========================== LIST + GROUPS =========================== */
 router.get('/', async (_req, res, next) => {
   try {
@@ -265,7 +258,7 @@ router.post('/:id/unarchive', requireAdmin, async (req, res, next) => {
 const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
 
 // Set (or clear) a PDF's status. body: { status: 'progress'|'done'|'notdone'|null }
-router.put('/:id/status', requireEditor, async (req, res, next) => {
+router.put('/:id/status', requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const raw = req.body?.status;
@@ -340,7 +333,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.put('/:id', requireEditor, async (req, res, next) => {
+router.put('/:id', requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const { title, subtitle, filename, dataBase64, groupId } = req.body || {};

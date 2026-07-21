@@ -13,6 +13,7 @@ import { StatusControl } from './Status.jsx';
 import { importDiagramFromExcel, downloadTemplate } from './excel.js';
 import { importDiagramFromJson } from './diagramExport.js';
 import AiButton from './ai/AiButton.jsx';
+import { useLabels } from '../labels/LabelsContext.jsx';
 import AiSidebar from './ai/AiSidebar.jsx';
 import { buildFromSpec } from './ai/aiBuild.js';
 
@@ -37,6 +38,7 @@ function normPid(g) {
 }
 
 export default function Home({ onOpen, onLogout, onBack }) {
+  const { t } = useLabels();
   const [now, setNow] = useState(new Date());
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -87,8 +89,6 @@ export default function Home({ onOpen, onLogout, onBack }) {
   const role = localStorage.getItem('role');
   const isViewer = role === 'viewer';
   const isAdmin = role === 'admin';
-  const isEditor = role === 'editor';
-  const canEdit = isAdmin || isEditor; // may change existing text (titles, statuses)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -693,7 +693,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
     if (isViewer && !groupHasAnyItemsDeep(g)) return null;
 
     const isOpen = q ? true : !!expanded[g.id];
-    const dndOn = isAdmin && !q;
+    const dndOn = !isViewer && !q;
     const folderNo = groupNumber(g);
     const isGroupOver = groupOver === g.id && groupDrag.current !== g.id;
     const draggingG = draggingGroupId != null ? groups.find(x => x.id === draggingGroupId) : null;
@@ -730,7 +730,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
           <span className="group-name">{g.name}</span>
           <span className="group-count">{total}</span>
 
-          {isAdmin && (
+          {!isViewer && (
             <span className="group-actions" onClick={e => e.stopPropagation()}>
               <button className="group-act-btn" title="Diaqram əlavə et"
                 disabled={saving}
@@ -791,11 +791,11 @@ export default function Home({ onOpen, onLogout, onBack }) {
                     {p.subtitle ? <span className="row-subtitle">{p.subtitle}</span> : null}
                   </div>
                   <div className="row-status" onClick={e => e.stopPropagation()}>
-                    <StatusControl value={p.status} editable={canEdit} onChange={(s) => changeStatus(p, s)} />
+                    <StatusControl value={p.status} editable={isAdmin} onChange={(s) => changeStatus(p, s)} />
                   </div>
-                  {canEdit && (
+                  {!isViewer && (
                     <div className="row-actions" onClick={e => e.stopPropagation()}>
-                      {isAdmin && pendingArchive === p.id ? (
+                      {pendingArchive === p.id ? (
                         <div className="archive-confirm">
                           <span className="archive-confirm-q"> </span>
                           <button className="action-btn confirm-yes" title="Təsdiq et"
@@ -813,18 +813,14 @@ export default function Home({ onOpen, onLogout, onBack }) {
                             onClick={() => setModal({ type: 'diagram-edit', proc: p })}>
                             <Edit3 size={16} />
                           </button>
-                          {isAdmin && (
-                            <>
-                              <button className="action-btn" title="Arxivə köçür"
-                                onClick={(e) => requestArchive(e, p)}>
-                                <Archive size={16} />
-                              </button>
-                              <button className="action-btn" title="Sil"
-                                onClick={(e) => deleteProcess(e, p)}>
-                                <Trash2 size={16} />
-                              </button>
-                            </>
-                          )}
+                          <button className="action-btn" title="Arxivə köçür"
+                            onClick={(e) => requestArchive(e, p)}>
+                            <Archive size={16} />
+                          </button>
+                          <button className="action-btn" title="Sil"
+                            onClick={(e) => deleteProcess(e, p)}>
+                            <Trash2 size={16} />
+                          </button>
                         </>
                       )}
                     </div>
@@ -884,7 +880,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
               {allOpen ? <ChevronsDownUp size={17} /> : <ChevronsUpDown size={17} />}
             </button>
           )}
-          {isAdmin && dirty && (
+          {!isViewer && dirty && (
             <button
               className="icon-btn cancel-all-btn"
               title="Yadda saxlanmamış dəyişiklikləri ləğv et"
@@ -895,7 +891,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
               <span>Ləğv et</span>
             </button>
           )}
-          {isAdmin && (
+          {!isViewer && (
             <button
               className={`icon-btn save-all-btn ${dirty ? 'dirty' : ''}`}
               title={dirty ? 'Yadda saxlanmamış dəyişikliklər var' : 'Bütün dəyişikliklər saxlanılıb'}
@@ -907,7 +903,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
             </button>
           )}
           <button className="logout-btn" onClick={logout}>
-            <LogOut size={16} /><span>Çıxış</span>
+            <LogOut size={16} /><span>{t('topbar.logout', 'Çıxış')}</span>
           </button>
         </div>
       </div>
@@ -922,7 +918,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
         <h2 className="home-title">
           {(settings?.org_title) || 'ABŞERON LOGİSTİKA MƏRKƏZİ'}<br />
           {(settings?.diagrams_page_title) || 'İş Axışları'}
-          {canEdit && settings && (
+          {isAdmin && settings && (
             <TitleEditButton
               heading="Başlığı dəyiş"
               nameLabel="Səhifə başlığı"
@@ -936,14 +932,14 @@ export default function Home({ onOpen, onLogout, onBack }) {
           {loading && <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>}
           {error && !loading && <div className="empty-state error">{error}</div>}
           {noResults && <div className="empty-state">Heç bir qrup yoxdur</div>}
-        {isAdmin && !loading && (
+        {!isViewer && !loading && (
             <button className="process-item create-btn" onClick={() => setModal({ type: 'group-create', parentId: null })} disabled={busy}>
               <div className="num"><FolderPlus size={20} /></div>
-              <div className="label">Yeni qrup yarat</div>
+              <div className="label">{t('home.new_group', 'Yeni qrup yarat')}</div>
             </button>
           )}
 
-          {isAdmin && draggingGroupId != null && normPid(groups.find(g => g.id === draggingGroupId) || {}) !== null && (
+          {!isViewer && draggingGroupId != null && normPid(groups.find(g => g.id === draggingGroupId) || {}) !== null && (
             <div
               className={`root-drop-zone ${groupOver === '__root__' ? 'drag-over' : ''}`}
               onDragOver={onRootDragOver}
@@ -955,7 +951,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
 
           {!loading && !error && childGroupsOf(null).map((g) => renderGroup(g, 0))}
 
-          {isAdmin && !loading && !error && archived.length > 0 && (() => {
+          {!isViewer && !loading && !error && archived.length > 0 && (() => {
             const items = archived.filter(matches);
             if (q && items.length === 0) return null;
             const isOpen = q ? true : archiveOpen;
@@ -978,7 +974,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
                           <span className="row-title">{p.title}</span>
                           {p.subtitle ? <span className="row-subtitle">{p.subtitle}</span> : null}
                         </div>
-                        {isAdmin && (
+                        {!isViewer && (
                           <div className="row-actions" onClick={e => e.stopPropagation()}>
                             <button className="action-btn" title="Arxivdən çıxar"
                               onClick={(e) => unarchiveProcess(e, p)}>

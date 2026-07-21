@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { LogoFull } from './Logo.jsx';
 import { LogOut } from './icons.jsx';
 import { api, setToken } from '../api/client.js';
+import { useLabels } from '../labels/LabelsContext.jsx';
 import TitleEditButton from './TitleEditButton.jsx';
 import Welcome1Img from '../assets/welcome/1.png';
 import Welcome2Img from '../assets/welcome/2.png';
@@ -61,12 +62,11 @@ function TemplateTileIcon() {
 }
 
 export default function SectionsHub({ onPick, onLogout }) {
+  const { t } = useLabels();
   const [now, setNow] = useState(new Date());
   const [settings, setSettings] = useState(null);
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
-  const isEditor = role === 'editor';
-  const canEdit = isAdmin || isEditor; // may change existing text
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -100,7 +100,7 @@ export default function SectionsHub({ onPick, onLogout }) {
           <div className="pill-chip">{fmtDate(now)}</div>
         </div>
         <button className="logout-btn" onClick={logout}>
-          <LogOut size={16} /><span>Çıxış</span>
+          <LogOut size={16} /><span>{t('topbar.logout', 'Çıxış')}</span>
         </button>
       </div>
 <br />
@@ -108,7 +108,7 @@ export default function SectionsHub({ onPick, onLogout }) {
         <LogoFull size="large" />
         <h2 className="home-title">
           {t('org_title', 'ABŞERON LOGİSTİKA MƏRKƏZİ')}
-          {canEdit && settings && (
+          {isAdmin && settings && (
             <TitleEditButton
               heading="Başlığı dəyiş"
               nameLabel="Təşkilat adı"
@@ -125,7 +125,7 @@ export default function SectionsHub({ onPick, onLogout }) {
               <div className="section-tile-title">{t('hub_diagrams_title', 'İş Axışları')}</div>
               <div className="section-tile-sub">{t('hub_diagrams_sub', 'Proses xəritələri')}</div>
             </button>
-            {canEdit && settings && (
+            {isAdmin && settings && (
               <div className="tile-edit">
                 <TitleEditButton
                   heading="Bölmə adını dəyiş"
@@ -147,7 +147,7 @@ export default function SectionsHub({ onPick, onLogout }) {
               <div className="section-tile-title">{t('hub_pdf_title', 'Normativ Sənədlər')}</div>
               <div className="section-tile-sub">{t('hub_pdf_sub', 'Prosedurlar, prosesler, əsəsnamələr')}</div>
             </button>
-            {canEdit && settings && (
+            {isAdmin && settings && (
               <div className="tile-edit">
                 <TitleEditButton
                   heading="Bölmə adını dəyiş"
@@ -168,7 +168,7 @@ export default function SectionsHub({ onPick, onLogout }) {
               <div className="section-tile-title">{t('hub_tmpl_title', 'Şablonlar')}</div>
               <div className="section-tile-sub">{t('hub_tmpl_sub', 'Sənəd şablonları')}</div>
             </button>
-            {canEdit && settings && (
+            {isAdmin && settings && (
               <div className="tile-edit">
                 <TitleEditButton
                   heading="Bölmə adını dəyiş"

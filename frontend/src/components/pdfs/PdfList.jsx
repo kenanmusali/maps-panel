@@ -13,6 +13,7 @@ import { StatusControl } from '../Status.jsx';
 import PdfFormModal from './PdfFormModal.jsx';
 import NameModal from '../NameModal.jsx';
 import TitleEditButton from '../TitleEditButton.jsx';
+import { useLabels } from '../../labels/LabelsContext.jsx';
 
 function fmtTime(d) {
   const h = d.getHours();
@@ -58,6 +59,7 @@ export default function PdfList({
   pageTitleDefault = 'Normativ Sənədlər',
   withStatus = true,
 }) {
+  const { t } = useLabels();
   const [now, setNow] = useState(new Date());
   const [groups, setGroups] = useState([]);
   const [pdfs, setPdfs] = useState([]);
@@ -108,8 +110,6 @@ export default function PdfList({
 
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
-  const isEditor = role === 'editor';
-  const canEdit = isAdmin || isEditor; // may change existing text (titles, statuses)
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -652,7 +652,7 @@ export default function PdfList({
 
                   {withStatus && (
                     <div className="row-status" onClick={e => e.stopPropagation()}>
-                      <StatusControl value={p.status} editable={canEdit} onChange={(s) => changeStatus(p, s)} />
+                      <StatusControl value={p.status} editable={isAdmin} onChange={(s) => changeStatus(p, s)} />
                     </div>
                   )}
 
@@ -664,9 +664,9 @@ export default function PdfList({
                     <button className="action-btn" onClick={() => downloadPdf(p)} disabled={busy === p.id} title="Yüklə">
                       <DownloadIcon size={15} /><span>Yüklə</span>
                     </button>
-                    {canEdit && (
+                    {isAdmin && (
                       <>
-                        {isAdmin && pendingArchive === p.id ? (
+                        {pendingArchive === p.id ? (
                           <div className="archive-confirm">
                             <span className="archive-confirm-q"> </span>
                             <button className="action-btn confirm-yes" title="Təsdiq et"
@@ -684,18 +684,14 @@ export default function PdfList({
                               onClick={(e) => { e.stopPropagation(); setModal({ mode: 'edit', pdf: p }); }} title="Redaktə et">
                               <Edit3 size={15} />
                             </button>
-                            {isAdmin && (
-                              <>
-                                <button className="action-btn action-btn-icon nospace"
-                                  onClick={(e) => requestArchive(e, p)} title="Arxivə köçür">
-                                  <Archive size={15} />
-                                </button>
-                                <button className="action-btn action-btn-icon action-btn-danger"
-                                  onClick={(e) => removePdf(e, p)} title="Sil">
-                                  <Trash2 size={15} />
-                                </button>
-                              </>
-                            )}
+                            <button className="action-btn action-btn-icon nospace"
+                              onClick={(e) => requestArchive(e, p)} title="Arxivə köçür">
+                              <Archive size={15} />
+                            </button>
+                            <button className="action-btn action-btn-icon action-btn-danger"
+                              onClick={(e) => removePdf(e, p)} title="Sil">
+                              <Trash2 size={15} />
+                            </button>
                           </>
                         )}
                       </>
@@ -776,7 +772,7 @@ export default function PdfList({
             </button>
           )}
           <button className="logout-btn" onClick={logout}>
-            <LogOut size={16} /><span>Çıxış</span>
+            <LogOut size={16} /><span>{t('topbar.logout', 'Çıxış')}</span>
           </button>
         </div>
       </div>
@@ -790,7 +786,7 @@ export default function PdfList({
         <LogoFull size="large" />
         <h2 className="home-title">
           {(settings?.[pageTitleKey]) || pageTitleDefault}
-          {canEdit && settings && (
+          {isAdmin && settings && (
             <TitleEditButton
               heading="Başlığı dəyiş"
               nameLabel="Səhifə başlığı"

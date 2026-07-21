@@ -69,5 +69,10 @@ export const api = {
 
   // Settings (editable section titles)
   getSettings: () => request('GET', '/api/settings'),
-  updateSettings: (patch) => request('PUT', '/api/settings', patch)
+  updateSettings: (patch) => request('PUT', '/api/settings', patch),
+
+  // Interface-text labels (editor_2 role only writes; everyone reads)
+  getLabels: () => request('GET', '/api/labels'),
+  setLabel: (id, text) => request('PUT', '/api/labels', { id, text }),
+  resetLabel: (id) => request('DELETE', `/api/labels/${encodeURIComponent(id)}`)
 };
