@@ -170,6 +170,22 @@
           ""
         ]
       }
+    },
+    {
+      "id": 6,
+      "type": "rect",
+      "style": "solid",
+      "x": 730,
+      "y": 24,
+      "laneId": "lane-1784623585168",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
     }
   ],
   "edges": [
