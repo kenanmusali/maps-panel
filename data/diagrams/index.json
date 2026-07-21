@@ -99,16 +99,6 @@
     {
       "id": 30,
       "name": "Abşeron Express MMC"
-    },
-    {
-      "id": 32,
-      "name": "test",
-      "parentId": null
-    },
-    {
-      "id": 33,
-      "name": "test1",
-      "parentId": 32
     }
   ],
   "processes": [
