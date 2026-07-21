@@ -162,6 +162,12 @@
       "title": "Saxlanc anbarından yüklərin çıxarılması və müştəriyə təhvil verilməsi üzrə iş axını",
       "subtitle": "ALM-İMS-PRD-004",
       "groupId": 7
+    },
+    {
+      "id": 114,
+      "title": "Mal çıxışı (dağıtım) əməliyyatlarının həyata keçirilməsi üzrə iş axını",
+      "subtitle": "ALM-İMS-PRD-005",
+      "groupId": 7
     }
   ]
 }
