@@ -382,7 +382,7 @@ function PanelsSection({ process, selection, setSelection, updateProcess }) {
 
 /* ===================== NODE ƏLAVƏ ET ===================== */
 function NodesSection({ process, selection, setSelection, updateProcess, addStyle, setAddStyle, onAddShape }) {
-  const { t } = useLabels();
+  const { t, tByText } = useLabels();
   // If a single node is selected, this panel edits THAT node (change its shape
   // or border) instead of adding a brand-new one.
   const selectedNode = selection?.kind === 'node'
@@ -514,61 +514,61 @@ function ExportShareSection({ process }) {
     <div className="export-panel">
       {/* ---- Save as PDF ---- */}
       <div className="export-block">
-        <div className="export-block-title"><PdfIcon size={14} /> PDF kimi saxla</div>
+        <div className="export-block-title"><PdfIcon size={14} /> {tByText('PDF kimi saxla')}</div>
         <div className="field-row col">
-          <label className="lbl">İstiqamət</label>
+          <label className="lbl">{tByText('İstiqamət')}</label>
           <div className="seg-toggle">
             <button type="button" className={orientation === 'landscape' ? 'on' : ''}
-              onClick={() => setOrientation('landscape')}>Albom (üfüqi)</button>
+              onClick={() => setOrientation('landscape')}>{tByText('Albom (üfüqi)')}</button>
             <button type="button" className={orientation === 'portrait' ? 'on' : ''}
-              onClick={() => setOrientation('portrait')}>Portret (şaquli)</button>
+              onClick={() => setOrientation('portrait')}>{tByText('Portret (şaquli)')}</button>
           </div>
         </div>
         <button className="btn primary" onClick={() => exportDiagramToPdf(process, { orientation })}>
-          <Download size={15} /> <span>PDF-ə çıxart</span>
+          <Download size={15} /> <span>{tByText('PDF-ə çıxart')}</span>
         </button>
         <div className="hint" style={{ marginTop: 6 }}>
-          Çap pəncərəsi açılır — orada <b>“PDF kimi yadda saxla”</b> seçin.
+          {tByText('Çap pəncərəsi açılır — orada')} <b>{tByText('“PDF kimi yadda saxla”')}</b> {tByText('seçin.')}
         </div>
       </div>
 
       {/* ---- Save as Excel ---- */}
       <div className="export-block">
-        <div className="export-block-title"><FileSpreadsheet size={14} /> Excel kimi saxla</div>
+        <div className="export-block-title"><FileSpreadsheet size={14} /> {tByText('Excel kimi saxla')}</div>
         <button className="btn" onClick={() => exportDiagramToExcel(process)}>
-          <Download size={15} /> <span>Excel-ə (.xlsx) çıxart</span>
+          <Download size={15} /> <span>{tByText('Excel-ə (.xlsx) çıxart')}</span>
         </button>
         <button className="btn" style={{ marginTop: 8 }} onClick={downloadTemplate}>
-          <FileSpreadsheet size={15} /> <span>Boş Excel şablonu yüklə</span>
+          <FileSpreadsheet size={15} /> <span>{tByText('Boş Excel şablonu yüklə')}</span>
         </button>
       </div>
 
       {/* ---- Save as JSON ---- */}
       <div className="export-block">
-        <div className="export-block-title"><FileJson size={14} /> JSON kimi saxla</div>
+        <div className="export-block-title"><FileJson size={14} /> {tByText('JSON kimi saxla')}</div>
         <button className="btn" onClick={() => exportDiagramToJson(process)}>
-          <Download size={15} /> <span>JSON məlumatını yüklə</span>
+          <Download size={15} /> <span>{tByText('JSON məlumatını yüklə')}</span>
         </button>
         <div className="hint" style={{ marginTop: 6 }}>
-          Bütün paneller, node-lar və oxlar tam şəkildə JSON faylına yazılır.
+          {tByText('Bütün paneller, node-lar və oxlar tam şəkildə JSON faylına yazılır.')}
         </div>
       </div>
 
       {/* ---- Share as link ---- */}
       <div className="export-block">
-        <div className="export-block-title"><Link2 size={14} /> Link ilə paylaş</div>
+        <div className="export-block-title"><Link2 size={14} /> {tByText('Link ilə paylaş')}</div>
         <div className="share-link-row">
           <input className="share-link-input" readOnly value={shareUrl}
             onFocus={e => e.target.select()} />
           <button className="btn primary share-copy-btn" onClick={copyLink}>
             {copied ? <Check size={15} /> : <Copy size={15} />}
-            <span>{copied ? 'Kopyalandı' : 'Kopyala'}</span>
+            <span>{copied ? tByText('Kopyalandı') : tByText('Kopyala')}</span>
           </button>
         </div>
         <div className="hint" style={{ marginTop: 6 }}>
-          Bu link birbaşa <b>bu diaqramı</b> açır. {isLoggedIn
-            ? 'İstifadəçi daxil olubsa, diaqram dərhal açılacaq.'
-            : 'Açan şəxs daxil olmayıbsa, əvvəlcə giriş tələb olunacaq, sonra diaqram açılacaq.'}
+          {tByText('Bu link birbaşa')} <b>{tByText('bu diaqramı')}</b> {tByText('açır.')} {isLoggedIn
+            ? tByText('İstifadəçi daxil olubsa, diaqram dərhal açılacaq.')
+            : tByText('Açan şəxs daxil olmayıbsa, əvvəlcə giriş tələb olunacaq, sonra diaqram açılacaq.')}
         </div>
       </div>
     </div>

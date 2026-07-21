@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Loader2 } from './icons.jsx';
 import { FileSpreadsheet, Download, FileJson } from 'lucide-react';
+import { useLabels } from '../labels/LabelsContext.jsx';
 
 // Flattens a flat groups array (with optional parentId) into depth-first
 // order, so a plain <select> can show nested groups with indentation.
@@ -45,6 +46,7 @@ export default function NameModal({
   onClose,
   onSave
 }) {
+  const { tByText } = useLabels();
   const [name, setName] = useState(name0);
   const [subtitle, setSubtitle] = useState(subtitle0);
   const [groupId, setGroupId] = useState(groupId0 ?? (groups[0]?.id ?? null));
@@ -106,7 +108,7 @@ export default function NameModal({
     <div className="pdf-modal-backdrop" onClick={onClose}>
       <form className="pdf-modal-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="pdf-modal-head nospace">
-          <h3>{heading}</h3>
+          <h3>{tByText(heading)}</h3>
           <button type="button" className="pdf-modal-close" onClick={onClose} aria-label="Bağla">
             <X size={18} />
           </button>
@@ -114,7 +116,7 @@ export default function NameModal({
 
         <div className="pdf-modal-body">
           <div className="pdf-field">
-            <label>{nameLabel}</label>
+            <label>{tByText(nameLabel)}</label>
             <input
               type="text"
               value={name}
@@ -126,7 +128,7 @@ export default function NameModal({
 
           {withSubtitle && (
             <div className="pdf-field">
-              <label>{subtitleLabel}</label>
+              <label>{tByText(subtitleLabel)}</label>
               <input
                 type="text"
                 value={subtitle}
@@ -138,7 +140,7 @@ export default function NameModal({
 
           {withGroup && (
             <div className="pdf-field">
-              <label>Qrup</label>
+              <label>{tByText('Qrup')}</label>
               <select value={groupId || ''} onChange={(e) => setGroupId(e.target.value)}>
                 {groups.length === 0 && <option value="">Qrup yoxdur</option>}
                 {orderedGroupOptions(groups).map(({ g, depth }) => (
@@ -169,7 +171,7 @@ export default function NameModal({
                 {importing
                   ? <Loader2 size={16} className="spin" />
                   : <FileSpreadsheet size={16} />}
-                <span>{importing ? 'Oxunur...' : 'Excel-dən idxal et'}</span>
+                <span>{importing ? tByText('Oxunur...') : tByText('Excel-dən idxal et')}</span>
               </button>
               {onImportJson && (
                 <>
@@ -190,7 +192,7 @@ export default function NameModal({
                     {importing
                       ? <Loader2 size={16} className="spin" />
                       : <FileJson size={16} />}
-                    <span>{importing ? 'Oxunur...' : 'JSON-dan idxal et'}</span>
+                    <span>{importing ? tByText('Oxunur...') : tByText('JSON-dan idxal et')}</span>
                   </button>
                 </>
               )}
@@ -202,11 +204,11 @@ export default function NameModal({
                   disabled={importing || saving}
                 >
                   <Download size={13} />
-                  <span>Nümunə Excel şablonu yüklə</span>
+                  <span>{tByText('Nümunə Excel şablonu yüklə')}</span>
                 </button>
               )}
               <p className="nm-import-hint">
-                Excel və ya JSON faylı bütün panelləri, node-ları və oxları avtomatik yeni diaqrama çevirir.
+                {tByText('Excel və ya JSON faylı bütün panelləri, node-ları və oxları avtomatik yeni diaqrama çevirir.')}
               </p>
             </div>
           )}
@@ -216,11 +218,11 @@ export default function NameModal({
 
         <div className="pdf-modal-foot">
           <button type="button" className="pdf-modal-btn" onClick={onClose} disabled={saving || importing}>
-            Ləğv et
+            {tByText('Ləğv et')}
           </button>
           <button type="submit" className="pdf-modal-btn pdf-modal-btn-primary" disabled={saving || importing}>
             {saving && <Loader2 size={14} className="spin" />}
-            <span>{saving ? 'Saxlanılır...' : saveLabel}</span>
+            <span>{saving ? tByText('Saxlanılır...') : tByText(saveLabel)}</span>
           </button>
         </div>
       </form>

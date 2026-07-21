@@ -38,7 +38,7 @@ function normPid(g) {
 }
 
 export default function Home({ onOpen, onLogout, onBack }) {
-  const { t } = useLabels();
+  const { t, tByText, rawByText, LabelPen } = useLabels();
   const [now, setNow] = useState(new Date());
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -840,7 +840,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
         <div className="top-left">
           {onBack && (
             <button className="pill-chip back-chip" onClick={onBack}>
-              <ChevronLeft size={16} /><span>Geri</span>
+              <ChevronLeft size={16} /><span>{tByText('Geri')}</span>
             </button>
           )}
           <div className="pill-chip">{fmtTime(now)}</div>
@@ -852,12 +852,13 @@ export default function Home({ onOpen, onLogout, onBack }) {
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Ad və ya nömrə ilə axtar"
+                placeholder={rawByText('Ad və ya nömrə ilə axtar')}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false); } }}
               />
             )}
+            <LabelPen text="Ad və ya nömrə ilə axtar" />
             <button
               className="icon-btn"
               title={searchOpen ? 'Axtarışı bağla' : 'Axtar'}
@@ -888,7 +889,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
               disabled={saving}
             >
               <Undo2 size={17} />
-              <span>Ləğv et</span>
+              <span>{tByText('Ləğv et')}</span>
             </button>
           )}
           {!isViewer && (
@@ -899,7 +900,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
               disabled={!dirty || saving}
             >
               {saving ? <Loader2 size={17} className="spin" /> : (dirty ? <Save size={17} /> : <Check size={17} />)}
-              <span>{saving ? 'Saxlanılır...' : (dirty ? 'Hamısını yadda saxla' : 'Saxlanılıb')}</span>
+              <span>{saving ? tByText('Saxlanılır...') : (dirty ? tByText('Hamısını yadda saxla') : tByText('Saxlanılıb'))}</span>
             </button>
           )}
           <button className="logout-btn" onClick={logout}>

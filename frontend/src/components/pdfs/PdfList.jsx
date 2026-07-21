@@ -59,7 +59,7 @@ export default function PdfList({
   pageTitleDefault = 'Normativ Sənədlər',
   withStatus = true,
 }) {
-  const { t } = useLabels();
+  const { t, tByText, rawByText, LabelPen } = useLabels();
   const [now, setNow] = useState(new Date());
   const [groups, setGroups] = useState([]);
   const [pdfs, setPdfs] = useState([]);
@@ -657,12 +657,12 @@ export default function PdfList({
                   )}
 
                   <div className="pdf-actions">
-                    <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id} title="Bax">
+                    <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id} title={rawByText('Bax')}>
                       {busy === p.id ? <Loader2 size={15} className="spin" /> : <Eye size={15} />}
-                      <span>Bax</span>
+                      <span>{tByText('Bax')}</span>
                     </button>
-                    <button className="action-btn" onClick={() => downloadPdf(p)} disabled={busy === p.id} title="Yüklə">
-                      <DownloadIcon size={15} /><span>Yüklə</span>
+                    <button className="action-btn" onClick={() => downloadPdf(p)} disabled={busy === p.id} title={rawByText('Yüklə')}>
+                      <DownloadIcon size={15} /><span>{tByText('Yüklə')}</span>
                     </button>
                     {isAdmin && (
                       <>
@@ -711,7 +711,7 @@ export default function PdfList({
       <div className="topbar">
         <div className="top-left">
           <button className="pill-chip back-chip" onClick={onBack}>
-            <ChevronLeft size={16} /><span>Geri</span>
+            <ChevronLeft size={16} /><span>{tByText('Geri')}</span>
           </button>
           <div className="pill-chip">{fmtTime(now)}</div>
           <div className="pill-chip">{fmtDate(now)}</div>
@@ -722,12 +722,13 @@ export default function PdfList({
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Ad və ya nömrə ilə axtar"
+                placeholder={rawByText('Ad və ya nömrə ilə axtar')}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Escape') { setQuery(''); setSearchOpen(false); } }}
               />
             )}
+            <LabelPen text="Ad və ya nömrə ilə axtar" />
             <button
               className="icon-btn"
               title={searchOpen ? 'Axtarışı bağla' : 'Axtar'}
@@ -768,7 +769,7 @@ export default function PdfList({
               disabled={!dirty || saving}
             >
               {saving ? <Loader2 size={17} className="spin" /> : (dirty ? <Save size={17} /> : <Check size={17} />)}
-              <span>{saving ? 'Saxlanılır...' : (dirty ? 'Hamısını yadda saxla' : 'Saxlanılıb')}</span>
+              <span>{saving ? tByText('Saxlanılır...') : (dirty ? tByText('Hamısını yadda saxla') : tByText('Saxlanılıb'))}</span>
             </button>
           )}
           <button className="logout-btn" onClick={logout}>
@@ -803,7 +804,7 @@ export default function PdfList({
       {isAdmin && !loading && (
             <button className="process-item create-btn" onClick={() => setGmodal({ type: 'create', parentId: null })}>
               <div className="num"><FolderPlus size={20} /></div>
-              <div className="label">Yeni qrup yarat</div>
+              <div className="label">{t('home.new_group', 'Yeni qrup yarat')}</div>
             </button>
           )}
 
@@ -846,9 +847,9 @@ export default function PdfList({
                           {p.subtitle ? <span className="row-subtitle">{p.subtitle}</span> : null}
                         </div>
                         <div className="pdf-actions">
-                          <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id} title="Bax">
+                          <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id} title={rawByText('Bax')}>
                             {busy === p.id ? <Loader2 size={15} className="spin" /> : <Eye size={15} />}
-                            <span>Bax</span>
+                            <span>{tByText('Bax')}</span>
                           </button>
                           {isAdmin && (
                             <>

@@ -125,7 +125,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   const role = localStorage.getItem('role');
   const isViewer = role === 'viewer';
   const isAdmin = role === 'admin' || role === 'editor_2';
-  const { t } = useLabels();
+  const { t, tByText } = useLabels();
 
   const [process, setProcess] = useState(null);
   const [status, setStatus] = useState(null);
@@ -1362,18 +1362,18 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
         <div className="draft-banner">
           <span className="draft-banner-icon"><AlertCircle size={16} /></span>
           <div className="draft-banner-text">
-            <span className="draft-banner-title">Saxlanılmamış dəyişikliklər var</span>
+            <span className="draft-banner-title">{tByText('Saxlanılmamış dəyişikliklər var')}</span>
             {draftTs && (
               <span className="draft-banner-time">
-                <Clock size={12} /> Son dəyişiklik: {formatDraftTime(draftTs)}
+                <Clock size={12} /> {tByText('Son dəyişiklik:')} {formatDraftTime(draftTs)}
               </span>
             )}
           </div>
           <div className="draft-banner-actions">
             <button className="draft-btn primary" onClick={() => { setEditMode(true); setPanelOpen(true); }}>
-              Redaktəyə davam et
+              {tByText('Redaktəyə davam et')}
             </button>
-            <button className="draft-btn" onClick={discardDraft}>Ləğv et</button>
+            <button className="draft-btn" onClick={discardDraft}>{tByText('Ləğv et')}</button>
           </div>
         </div>
       )}

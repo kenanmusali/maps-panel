@@ -1345,15 +1345,20 @@ function MultiNodeMenu({ x, y, count, onClose, onColor, onStyle, onDelete }) {
   const { t } = useLabels();
   useEffect(() => {
     function close(e) {
+      if (document.body.dataset.labelEdit === '1') return; // frozen while editing text
       // ignore clicks inside the menu
       if (e.target.closest && e.target.closest('.multi-menu')) return;
       onClose();
     }
+    function onKey(e) {
+      if (document.body.dataset.labelEdit === '1') return;
+      onClose(e);
+    }
     window.addEventListener('mousedown', close);
-    window.addEventListener('keydown', onClose);
+    window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('mousedown', close);
-      window.removeEventListener('keydown', onClose);
+      window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
 

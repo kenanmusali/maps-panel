@@ -46,7 +46,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
 
   useEffect(() => {
     if (!open) return;
-    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    function onDoc(e) { if (document.body.dataset.labelEdit === '1') return; if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);

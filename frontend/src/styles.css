@@ -2480,3 +2480,11 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   box-shadow: var(--ring);
   min-width: 40px; max-width: 340px;
 }
+
+/* Standalone pen for text that isn't a rendered child (placeholders, icons) */
+.tedit-pen-loose {
+  width: 18px; height: 18px; margin: 0 2px; vertical-align: middle;
+  box-shadow: 0 0 0 1px var(--primary-light);
+}
+.tedit-pen-loose.is-overridden { color: #fff; background: var(--primary); }
+.tedit-input-loose { max-width: 220px; }

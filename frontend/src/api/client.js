@@ -11,6 +11,19 @@ export function setToken(t) {
 }
 
 async function request(method, path, body) {
+  // editor_2 may only change interface text. Any content mutation (diagrams,
+  // groups, settings, pdfs, templates, status, archive, delete, reorder…) is a
+  // silent no-op — it never reaches the server, so nothing is saved, added,
+  // archived or deleted. Only label writes (/api/labels) and reads go through.
+  if (
+    method !== 'GET' &&
+    localStorage.getItem('role') === 'editor_2' &&
+    !path.startsWith('/api/labels') &&
+    path !== '/api/login' && path !== '/api/me'
+  ) {
+    return null;
+  }
+
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
