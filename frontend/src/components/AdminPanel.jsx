@@ -382,7 +382,7 @@ function PanelsSection({ process, selection, setSelection, updateProcess }) {
 
 /* ===================== NODE ƏLAVƏ ET ===================== */
 function NodesSection({ process, selection, setSelection, updateProcess, addStyle, setAddStyle, onAddShape }) {
-  const { t, tByText } = useLabels();
+  const { t } = useLabels();
   // If a single node is selected, this panel edits THAT node (change its shape
   // or border) instead of adding a brand-new one.
   const selectedNode = selection?.kind === 'node'
@@ -487,6 +487,7 @@ function NodesSection({ process, selection, setSelection, updateProcess, addStyl
 
 /* ===================== İXRAC / PAYLAŞ ===================== */
 function ExportShareSection({ process }) {
+  const { tByText } = useLabels();
   const [orientation, setOrientation] = useState('landscape');
   const [copied, setCopied] = useState(false);
   const isLoggedIn = !!getToken();

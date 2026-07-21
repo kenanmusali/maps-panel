@@ -11,6 +11,7 @@ import { api, setToken } from '../api/client.js';
 import DiagramCanvas, { edgePoints, polylinesCross } from './DiagramCanvas.jsx';
 import NodeModal from './NodeModal.jsx';
 import AdminPanel from './AdminPanel.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import SelectionMenu from './SelectionMenu.jsx';
 import { deriveAccentVars, deriveLaneVars, deriveEdgeVars, asColorString, normalizeTheme } from './colorUtils.js';
 import { autoNodeHeight } from './nodeMeasure.js';
@@ -1447,6 +1448,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
         </div>
 
         {!isViewer && editMode && panelOpen && process && (
+          <ErrorBoundary resetKey={process.id}>
           <AdminPanel
             process={process}
             selection={selection}
@@ -1460,6 +1462,7 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
             onAddShape={onAddShape}
             onArchive={onArchiveDiagram}
           />
+          </ErrorBoundary>
         )}
 
         {!isViewer && editMode && selection && selection.menu !== false && process && !interacting && (
