@@ -109,7 +109,7 @@ export default function PdfList({
   const [itemOver, setItemOver] = useState(null);
 
   const role = localStorage.getItem('role');
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'editor_2';
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);

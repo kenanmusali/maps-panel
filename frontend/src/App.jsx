@@ -7,7 +7,7 @@ import Home from './components/Home.jsx';
 import Diagram from './components/Diagram.jsx';
 import PdfList from './components/pdfs/PdfList.jsx';
 import TemplateList from './components/pdfs/TemplateList.jsx';
-import LabelEditorPage from './components/LabelEditorPage.jsx';
+import EditorBar from './components/EditorBar.jsx';
 import { LabelsProvider } from './labels/LabelsContext.jsx';
 
 export default function App() {
@@ -116,12 +116,6 @@ export default function App() {
       return <Login onLogin={onLogin} />;
     }
 
-    // editor_2 only manages interface text — it never sees the diagram
-    // hub/admin content, just its own label-editor screen.
-    if (user?.role === 'editor_2') {
-      return <LabelEditorPage onLogout={onLogout} />;
-    }
-
     if (view === 'hub') {
       return <SectionsHub onPick={pickSection} onLogout={onLogout} />;
     }
@@ -155,6 +149,7 @@ export default function App() {
 
   return (
     <LabelsProvider enabled={!!user}>
+      {user?.role === 'editor_2' && <EditorBar onLogout={onLogout} />}
       {renderView()}
     </LabelsProvider>
   );

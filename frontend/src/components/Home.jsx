@@ -88,7 +88,7 @@ export default function Home({ onOpen, onLogout, onBack }) {
 
   const role = localStorage.getItem('role');
   const isViewer = role === 'viewer';
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'editor_2';
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);

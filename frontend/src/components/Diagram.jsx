@@ -124,7 +124,7 @@ function repackLanes(lanes, nodes) {
 export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   const role = localStorage.getItem('role');
   const isViewer = role === 'viewer';
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'editor_2';
   const { t } = useLabels();
 
   const [process, setProcess] = useState(null);
