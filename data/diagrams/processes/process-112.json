@@ -33,12 +33,12 @@
       "id": "lane-1784623617560",
       "label": "ALŞ",
       "y": 710,
-      "h": 160
+      "h": 210
     },
     {
       "id": "lane-1784623626914",
       "label": "SƏO",
-      "y": 870,
+      "y": 920,
       "h": 160
     }
   ],
@@ -188,22 +188,6 @@
       }
     },
     {
-      "id": "7.1",
-      "type": "subprocess",
-      "style": "solid",
-      "x": 730,
-      "y": 620,
-      "laneId": "lane-1784623605456",
-      "w": 200,
-      "h": 70,
-      "text": "Yeni addım",
-      "info": {
-        "general": [
-          ""
-        ]
-      }
-    },
-    {
       "id": 11,
       "type": "rect",
       "style": "solid",
@@ -282,6 +266,38 @@
           ""
         ]
       }
+    },
+    {
+      "id": 2,
+      "type": "subprocess",
+      "style": "stroke",
+      "x": 740,
+      "y": 830,
+      "laneId": "lane-1784623617560",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": "subprocess",
+      "style": "solid",
+      "x": 730,
+      "y": 598,
+      "laneId": "lane-1784623605456",
+      "w": 190,
+      "h": 60,
+      "text": "Yeni alt-proses",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
     }
   ],
   "edges": [
@@ -329,20 +345,14 @@
       "e": "bottom"
     },
     {
-      "from": 7,
-      "to": "7.1",
-      "s": "bottom",
-      "e": "top"
-    },
-    {
       "from": 8,
       "to": 9,
       "s": "right",
       "e": "left"
     },
     {
-      "from": "7.1",
-      "to": 8,
+      "from": 4,
+      "to": 5,
       "s": "bottom",
       "e": "top"
     }
