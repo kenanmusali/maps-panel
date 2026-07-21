@@ -240,10 +240,42 @@
       "type": "pill",
       "style": "solid",
       "x": 1270,
-      "y": 530,
+      "y": 520,
       "laneId": "lane-1784623605456",
       "w": 200,
       "h": 50,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "rect",
+      "style": "solid",
+      "x": 1000,
+      "y": 740,
+      "laneId": "lane-1784623617560",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "rect",
+      "style": "solid",
+      "x": 730,
+      "y": 740,
+      "laneId": "lane-1784623617560",
+      "w": 200,
+      "h": 70,
       "text": "Yeni addım",
       "info": {
         "general": [
@@ -299,6 +331,18 @@
     {
       "from": 7,
       "to": "7.1",
+      "s": "bottom",
+      "e": "top"
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "s": "right",
+      "e": "left"
+    },
+    {
+      "from": "7.1",
+      "to": 8,
       "s": "bottom",
       "e": "top"
     }
