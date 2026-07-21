@@ -27,18 +27,18 @@
       "id": "lane-1784623605456",
       "label": "ƏKTD",
       "y": 500,
-      "h": 160
+      "h": 240
     },
     {
       "id": "lane-1784623617560",
       "label": "ALŞ",
-      "y": 660,
+      "y": 740,
       "h": 160
     },
     {
       "id": "lane-1784623626914",
       "label": "SƏO",
-      "y": 820,
+      "y": 900,
       "h": 160
     }
   ],
@@ -127,8 +127,8 @@
       "id": 2,
       "type": "rect",
       "style": "solid",
-      "x": 410,
-      "y": 530,
+      "x": 420,
+      "y": 540,
       "laneId": "lane-1784623605456",
       "w": 200,
       "h": 70,
@@ -144,8 +144,24 @@
       "type": "rect",
       "style": "solid",
       "x": 360,
-      "y": 730,
+      "y": 810,
       "laneId": "lane-1784623617560",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "type": "rect",
+      "style": "solid",
+      "x": 430,
+      "y": 650,
+      "laneId": "lane-1784623605456",
       "w": 200,
       "h": 70,
       "text": "Yeni addım",
@@ -175,6 +191,12 @@
       "s": "bottom",
       "e": "top",
       "arrow": "end"
+    },
+    {
+      "from": 3,
+      "to": 2,
+      "s": "right",
+      "e": "left"
     }
   ],
   "status": "done"
