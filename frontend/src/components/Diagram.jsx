@@ -20,6 +20,7 @@ import { resolveNodePlacement } from './nodeLayout.js';
 import AiButton from './ai/AiButton.jsx';
 import AiSidebar from './ai/AiSidebar.jsx';
 import { StatusControl } from './Status.jsx';
+import SaveReminder from './SaveReminder.jsx';
 import { buildFromSpec, findLane, nextNodeId as nextFreeNodeId, portsFor, safeShape, safeStyle } from './ai/aiBuild.js';
 
 const DRAFT_KEY = (id) => `absheron_draft_${id}`;
@@ -1307,6 +1308,10 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
               <MonitorPlay size={16} />
               <span>{t('topbar.presentation', 'Təqdimat')}</span>
             </button>
+          )}
+
+          {!isViewer && editMode && (
+            <SaveReminder editMode={editMode} dirty={dirty} onSave={save} />
           )}
 
           {!isViewer && editMode && (
