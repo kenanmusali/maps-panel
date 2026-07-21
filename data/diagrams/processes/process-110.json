@@ -194,8 +194,8 @@
     {
       "id": 11,
       "type": "subprocess",
-      "style": "solid",
-      "x": 120,
+      "style": "stroke",
+      "x": 125,
       "y": 560,
       "laneId": "lane-1784619072316",
       "w": 210,
@@ -210,7 +210,7 @@
     {
       "id": 12,
       "type": "rect",
-      "style": "solid",
+      "style": "stroke",
       "x": 410,
       "y": 560,
       "laneId": "lane-1784619072316",
@@ -226,7 +226,7 @@
     {
       "id": 13,
       "type": "rect",
-      "style": "solid",
+      "style": "stroke",
       "x": 740,
       "y": 560,
       "laneId": "lane-1784619072316",
