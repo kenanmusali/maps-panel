@@ -9,40 +9,121 @@
       "id": "lane-1784623585168",
       "label": "Müştəri",
       "y": 20,
-      "h": 180
+      "h": 160
     },
     {
       "id": "lane-1784623591488",
       "label": "BD",
-      "y": 200,
-      "h": 180
+      "y": 180,
+      "h": 160
     },
     {
       "id": "lane-1784623598576",
       "label": "BDD",
-      "y": 380,
-      "h": 180
+      "y": 340,
+      "h": 172
     },
     {
       "id": "lane-1784623605456",
       "label": "ƏKTD",
-      "y": 560,
-      "h": 180
+      "y": 512,
+      "h": 160
     },
     {
       "id": "lane-1784623617560",
       "label": "ALŞ",
-      "y": 740,
-      "h": 180
+      "y": 672,
+      "h": 160
     },
     {
       "id": "lane-1784623626914",
       "label": "SƏO",
-      "y": 920,
-      "h": 180
+      "y": 832,
+      "h": 160
     }
   ],
-  "nodes": [],
+  "nodes": [
+    {
+      "id": 1,
+      "type": "pill",
+      "style": "solid",
+      "x": 110,
+      "y": 30,
+      "laneId": "lane-1784623585168",
+      "w": 200,
+      "h": 50,
+      "text": "Yeni başlanğıc/son",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "2.1",
+      "type": "pill",
+      "style": "solid",
+      "x": 90,
+      "y": 210,
+      "laneId": "lane-1784623591488",
+      "w": 200,
+      "h": 50,
+      "text": "Yeni başlanğıc/son",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "1.2",
+      "type": "rect",
+      "style": "solid",
+      "x": 390,
+      "y": 24,
+      "laneId": "lane-1784623585168",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "rect",
+      "style": "solid",
+      "x": 90,
+      "y": 422,
+      "laneId": "lane-1784623598576",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "2.2",
+      "type": "rect",
+      "style": "solid",
+      "x": 420,
+      "y": 422,
+      "laneId": "lane-1784623598576",
+      "w": 200,
+      "h": 70,
+      "text": "Yeni addım",
+      "info": {
+        "general": [
+          ""
+        ]
+      }
+    }
+  ],
   "edges": [],
   "status": "done"
 }
