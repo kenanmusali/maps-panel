@@ -6,6 +6,16 @@
       "parentId": null
     }
   ],
-  "pdfs": [],
+  "pdfs": [
+    {
+      "id": 1,
+      "title": "Testing",
+      "subtitle": "",
+      "filename": "grapefruit.pdf",
+      "size": 43108,
+      "groupId": 1,
+      "uploadedAt": "2026-07-22T06:20:03.676Z"
+    }
+  ],
   "files": []
 }
