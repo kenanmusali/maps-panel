@@ -65,6 +65,11 @@ export default function DiagramCanvas({
   const [multiMenu, setMultiMenu] = useState(null); // { x, y } screen pos of multi-node context menu
   const didLinkRef = useRef(false);
   const didMarqueeRef = useRef(false);
+  // Auto-scroll while dragging/resizing a node past the visible edge of the
+  // canvas (fix 16) — without this the mouse simply runs out of screen to
+  // move into, capping how far a node can grow or move.
+  const edgeScrollRafRef = useRef(null);
+  const edgeScrollVelRef = useRef(null);
   const multiSel = useMemo(() => new Set((selectedNodeIds || []).map(String)), [selectedNodeIds]);
 
   // Presentation: nodes that feed the current node via an incoming arrow —
@@ -113,6 +118,39 @@ export default function DiagramCanvas({
   function toCanvasPoint(e) {
     const rect = canvasRef.current.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  // While actively dragging or resizing, keep scrolling the canvas if the
+  // cursor sits near the edge of the visible viewport — otherwise a node
+  // near the right/bottom edge can't grow or move any further once the
+  // mouse hits the edge of the screen (fix 16).
+  const EDGE_ZONE = 36, EDGE_MAX_SPEED = 18;
+  function updateEdgeAutoScroll(e) {
+    const scroller = canvasRef.current?.parentElement;
+    if (!scroller) return;
+    const rect = scroller.getBoundingClientRect();
+    let vx = 0, vy = 0;
+    if (e.clientX > rect.right - EDGE_ZONE) vx = EDGE_MAX_SPEED * Math.min(1, (e.clientX - (rect.right - EDGE_ZONE)) / EDGE_ZONE);
+    else if (e.clientX < rect.left + EDGE_ZONE) vx = -EDGE_MAX_SPEED * Math.min(1, ((rect.left + EDGE_ZONE) - e.clientX) / EDGE_ZONE);
+    if (e.clientY > rect.bottom - EDGE_ZONE) vy = EDGE_MAX_SPEED * Math.min(1, (e.clientY - (rect.bottom - EDGE_ZONE)) / EDGE_ZONE);
+    else if (e.clientY < rect.top + EDGE_ZONE) vy = -EDGE_MAX_SPEED * Math.min(1, ((rect.top + EDGE_ZONE) - e.clientY) / EDGE_ZONE);
+
+    if (vx === 0 && vy === 0) { stopEdgeAutoScroll(); return; }
+    edgeScrollVelRef.current = { vx, vy };
+    if (!edgeScrollRafRef.current) {
+      const step = () => {
+        const vel = edgeScrollVelRef.current;
+        if (!vel) { edgeScrollRafRef.current = null; return; }
+        scroller.scrollLeft += vel.vx;
+        scroller.scrollTop += vel.vy;
+        edgeScrollRafRef.current = requestAnimationFrame(step);
+      };
+      edgeScrollRafRef.current = requestAnimationFrame(step);
+    }
+  }
+  function stopEdgeAutoScroll() {
+    edgeScrollVelRef.current = null;
+    if (edgeScrollRafRef.current) { cancelAnimationFrame(edgeScrollRafRef.current); edgeScrollRafRef.current = null; }
   }
 
   /* ---- sidebar shape drag-and-drop onto the canvas ---- */
@@ -178,7 +216,7 @@ export default function DiagramCanvas({
         .map(n => ({ id: n.id, origX: n.x, origY: n.y }));
     }
     setDrag({
-      nodeId: node.id, startX: e.clientX, startY: e.clientY,
+      nodeId: node.id, startX: toCanvasPoint(e).x, startY: toCanvasPoint(e).y,
       origX: node.x, origY: node.y, moved: false, group
     });
   }
@@ -197,7 +235,7 @@ export default function DiagramCanvas({
     e.preventDefault();
     e.stopPropagation();
     setResize({
-      nodeId: node.id, corner, startX: e.clientX, startY: e.clientY,
+      nodeId: node.id, corner, startX: toCanvasPoint(e).x, startY: toCanvasPoint(e).y,
       origX: node.x, origY: node.y, origW: node.w, origH: node.h
     });
     if (onNodeInteractionStart) onNodeInteractionStart();
@@ -254,8 +292,9 @@ export default function DiagramCanvas({
       return;
     }
     if (resize) {
-      const dx = e.clientX - resize.startX;
-      const dy = e.clientY - resize.startY;
+      const pt = toCanvasPoint(e);
+      const dx = pt.x - resize.startX;
+      const dy = pt.y - resize.startY;
       let x = resize.origX, y = resize.origY, w = resize.origW, h = resize.origH;
       if (resize.corner.includes('e')) w = resize.origW + dx;
       if (resize.corner.includes('w')) { w = resize.origW - dx; x = resize.origX + dx; }
@@ -270,11 +309,13 @@ export default function DiagramCanvas({
       const fw = Math.max(MIN_NODE_W, w), fh = Math.max(MIN_NODE_H, h);
       if (onNodeResize) onNodeResize(resize.nodeId, x, y, fw, fh);
       reportSelectedRect(resize.nodeId, x, y, fw, fh);
+      updateEdgeAutoScroll(e);
       return;
     }
     if (!drag) return;
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
+    const dragPt = toCanvasPoint(e);
+    const dx = dragPt.x - drag.startX;
+    const dy = dragPt.y - drag.startY;
     if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
 
     const draggedNode = process.nodes.find(n => n.id === drag.nodeId);
@@ -328,6 +369,7 @@ export default function DiagramCanvas({
         const gy = Math.max(4, g.origY + ddy);
         onNodeMove(g.id, gx, gy);
       }
+      updateEdgeAutoScroll(e);
       return;
     }
 
@@ -341,6 +383,7 @@ export default function DiagramCanvas({
     if (!drag.moved && onNodeInteractionStart) onNodeInteractionStart();
     onNodeMove(drag.nodeId, nx, ny);
     reportSelectedRect(drag.nodeId, nx, ny, nw, nh);
+    updateEdgeAutoScroll(e);
   }
 
   function finishLink(targetNode) {
@@ -371,6 +414,7 @@ export default function DiagramCanvas({
   }
 
   function endDrag() {
+    stopEdgeAutoScroll();
     setGuides(null);
     // Finish a rubber-band selection.
     if (marquee) {
@@ -1232,7 +1276,7 @@ function detourAroundBox(p1, p2, box) {
 function pathClearOfBoxes(pts, boxes) {
   for (let i = 0; i < pts.length - 1; i++) {
     for (const box of boxes) {
-      if (segHitsBox(pts[i], pts[i + 1], box, 2)) return false;
+      if (segHitsBox(pts[i], pts[i + 1], box, CLEARANCE)) return false;
     }
   }
   return true;
@@ -1293,7 +1337,7 @@ function avoidObstacles(points, obstacles, protectEnds = false) {
     const hi = protectEnds ? pts.length - 2 : pts.length - 1;
     for (let i = lo; i < hi; i++) {
       for (const box of boxes) {
-        if (segHitsBox(pts[i], pts[i + 1], box, 2)) { hit = box; hitIdx = i; break; }
+        if (segHitsBox(pts[i], pts[i + 1], box, CLEARANCE)) { hit = box; hitIdx = i; break; }
       }
       if (hit) break;
     }

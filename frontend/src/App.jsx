@@ -16,6 +16,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [processId, setProcessId] = useState(null);
   const [focusNodeId, setFocusNodeId] = useState(null);
+  // Remembers the diagram we came from so, on returning to the list, it can
+  // scroll to and open the right folder for that item (fix 15). Not cleared
+  // on backToDiagrams — only replaced the next time a diagram is opened.
+  const [lastOpenedProcessId, setLastOpenedProcessId] = useState(null);
   const [bootChecking, setBootChecking] = useState(true);
   // A diagram id parsed from a share link (?d=<id>&n=<nodeId>), pending until
   // the user is authenticated. Kept in a ref so it survives re-renders.
@@ -92,6 +96,7 @@ export default function App() {
   function openProcess(id, nodeId = null) {
     setProcessId(id);
     setFocusNodeId(nodeId);
+    setLastOpenedProcessId(id);
     setView('diagram');
   }
 
@@ -121,7 +126,7 @@ export default function App() {
     }
 
     if (view === 'diagrams') {
-      return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} />;
+      return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} focusProcessId={lastOpenedProcessId} />;
     }
 
     if (view === 'pdfs') {
