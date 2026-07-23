@@ -765,9 +765,17 @@ export default function Diagram({ processId, focusNodeId, onBack, onLogout }) {
   }, []);
 
   /** Repack lanes once resizing finishes, same pattern as onNodeMoveEnd. */
-  const onNodeResizeEnd = useCallback(() => {
+  const onNodeResizeEnd = useCallback((nodeId) => {
     updateProcess(p => {
-      const r = repackLanes(p.lanes, p.nodes);
+      let nodes = p.nodes;
+      if (nodeId != null) {
+        nodes = nodes.map(n => {
+          if (String(n.id) !== String(nodeId)) return n;
+          const needed = autoNodeHeight(n, n.text);
+          return needed > n.h ? { ...n, h: needed } : n;
+        });
+      }
+      const r = repackLanes(p.lanes, nodes);
       return { ...p, lanes: r.lanes, nodes: r.nodes };
     });
   }, []);
@@ -1618,9 +1626,11 @@ function normalizeProcess(p) {
   }));
   // Coerce any legacy colour-objects (theme / per-node / per-edge) into plain
   // strings so nothing downstream ever calls a string method on an object.
-  const nodes = (p.nodes || []).map(n =>
-    (n.color != null && typeof n.color !== 'string') ? { ...n, color: asColorString(n.color) } : n
-  );
+  const nodes = (p.nodes || []).map(n => {
+    const withColor = (n.color != null && typeof n.color !== 'string') ? { ...n, color: asColorString(n.color) } : n;
+    const needed = autoNodeHeight(withColor, withColor.text);
+    return needed > (withColor.h || 0) ? { ...withColor, h: needed } : withColor;
+  });
   const edges = (p.edges || []).map(e =>
     (e.color != null && typeof e.color !== 'string') ? { ...e, color: asColorString(e.color) } : e
   );

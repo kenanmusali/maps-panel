@@ -462,7 +462,7 @@ top: 50px;
   overflow: auto; padding: 16px;
   height: calc(100vh - var(--topbar-h));
 }
-.diagram-canvas { position: relative; margin: 0; user-select: none; width:100% !important}
+.diagram-canvas { position: relative; margin: 0; user-select: none;}
 .diagram-canvas.linking { cursor: crosshair; }
 
 .draft-banner {
