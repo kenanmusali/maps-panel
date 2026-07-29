@@ -771,24 +771,33 @@ function ShapeBg({ shape, style }) {
   return null;
 }
 
-function nearestSide(node, pt, fromPt) {
-  // With a source point to reference, pick the side facing back toward it —
-  // e.g. a node sitting directly below its source always connects on 'top',
-  // regardless of exactly where inside it the arrow was dropped. Without
-  // this, dropping in the lower half of a small/close node (like a stacked
-  // sub-process box) could measure closer to its bottom edge and snap the
-  // arrow in backwards.
-  if (fromPt) return sideTowardPoint(fromPt, { x: node.x + node.w / 2, y: node.y + node.h / 2 });
+// How close two sides' distances need to be (in canvas px) before we treat
+// the drop point as "ambiguous" and fall back to the source-facing side.
+const SIDE_AMBIGUITY_PX = 16;
 
+function nearestSide(node, pt, fromPt) {
   const dTop = Math.abs(pt.y - node.y);
   const dBottom = Math.abs(pt.y - (node.y + node.h));
   const dLeft = Math.abs(pt.x - node.x);
   const dRight = Math.abs(pt.x - (node.x + node.w));
-  const min = Math.min(dTop, dBottom, dLeft, dRight);
-  if (min === dTop) return 'top';
-  if (min === dBottom) return 'bottom';
-  if (min === dLeft) return 'left';
-  return 'right';
+  const dists = [
+    ['top', dTop],
+    ['bottom', dBottom],
+    ['left', dLeft],
+    ['right', dRight],
+  ].sort((a, b) => a[1] - b[1]);
+
+  // The drop point clearly favors one side over the others — honor exactly
+  // where the arrow was dragged to.
+  if (!fromPt || dists[1][1] - dists[0][1] >= SIDE_AMBIGUITY_PX) {
+    return dists[0][0];
+  }
+
+  // Only when the drop is genuinely ambiguous (near the middle, or two sides
+  // are nearly tied — e.g. a small/close, stacked sub-process box) do we
+  // fall back to the side facing back toward the source, so the elbow enters
+  // naturally instead of doubling back.
+  return sideTowardPoint(fromPt, { x: node.x + node.w / 2, y: node.y + node.h / 2 });
 }
 
 // The side of a free (cursor) endpoint that faces back toward the source, so
