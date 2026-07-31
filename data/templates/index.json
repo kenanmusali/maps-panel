@@ -11,11 +11,6 @@
       "parentId": null
     },
     {
-      "id": 4,
-      "name": "Anbar logistikası şöbəsi",
-      "parentId": null
-    },
-    {
       "id": 5,
       "name": "Biznes departamenti",
       "parentId": null
@@ -63,11 +58,6 @@
     {
       "id": 14,
       "name": "Maliyyə departamenti",
-      "parentId": null
-    },
-    {
-      "id": 15,
-      "name": "Manevra və planlama ofisi",
       "parentId": null
     }
   ],
