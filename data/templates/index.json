@@ -79,6 +79,11 @@
       "id": 18,
       "name": "Təhlükəsizlik şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 19,
+      "name": "Təmir və texnikaya nəzarət şöbəsi",
+      "parentId": null
     }
   ],
   "pdfs": [],
