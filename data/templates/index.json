@@ -102,7 +102,12 @@
     },
     {
       "id": 23,
-      "name": "Abşeron Express MMC",
+      "name": "MB BROKER MMC",
+      "parentId": null
+    },
+    {
+      "id": 24,
+      "name": "Ümumi siyasət və sertifikatlar",
       "parentId": null
     }
   ],
