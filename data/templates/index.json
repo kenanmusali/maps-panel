@@ -54,6 +54,11 @@
       "id": 12,
       "name": "Layihələrin idarə olunması departamenti",
       "parentId": null
+    },
+    {
+      "id": 13,
+      "name": "Marketinq və Kommunikasiya departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
