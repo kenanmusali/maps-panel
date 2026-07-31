@@ -64,6 +64,11 @@
       "id": 15,
       "name": "Manevra və planlama ofisi",
       "parentId": null
+    },
+    {
+      "id": 16,
+      "name": "İnsan resursları və inzibati departament",
+      "parentId": null
     }
   ],
   "pdfs": [],
