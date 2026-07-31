@@ -69,6 +69,11 @@
       "id": 16,
       "name": "İnsan resursları və inzibati departament",
       "parentId": null
+    },
+    {
+      "id": 17,
+      "name": "Risklərə nəzarət və monitorinq şöbəsi",
+      "parentId": null
     }
   ],
   "pdfs": [],
