@@ -24,6 +24,11 @@
       "id": 5,
       "name": "Biznes departamenti",
       "parentId": null
+    },
+    {
+      "id": 6,
+      "name": "Beynəlxalq daşımalar departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [
