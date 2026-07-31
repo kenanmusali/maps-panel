@@ -72,7 +72,12 @@
     },
     {
       "id": 17,
-      "name": "Sahə əməliyyatları ofisi",
+      "name": "Risklərə nəzarət və monitorinq şöbəsi",
+      "parentId": null
+    },
+    {
+      "id": 18,
+      "name": "Təchizat şöbəsi",
       "parentId": null
     }
   ],
