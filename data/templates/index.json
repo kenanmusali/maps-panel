@@ -49,6 +49,11 @@
       "id": 11,
       "name": "Keyfiyyətə nəzarət və SƏTƏM şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 12,
+      "name": "Layihələrin idarə olunması departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
