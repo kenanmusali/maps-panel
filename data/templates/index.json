@@ -9,6 +9,11 @@
       "id": 2,
       "name": "Anbar logistikası şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 3,
+      "name": "Biznes departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [
