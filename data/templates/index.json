@@ -94,6 +94,11 @@
       "id": 21,
       "name": "TIR Park və minik avtomobillərinin dayanacağı şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 22,
+      "name": "Vahid pəncərə departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
