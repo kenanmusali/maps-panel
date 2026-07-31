@@ -41,6 +41,11 @@
       "parentId": null
     },
     {
+      "id": 16,
+      "name": "İnsan resursları və inzibati departament",
+      "parentId": null
+    },
+    {
       "id": 11,
       "name": "Keyfiyyətə nəzarət və SƏTƏM şöbəsi",
       "parentId": null
@@ -63,11 +68,6 @@
     {
       "id": 15,
       "name": "Manevra və planlama ofisi",
-      "parentId": null
-    },
-    {
-      "id": 16,
-      "name": "İnsan resursları və inzibati departament",
       "parentId": null
     },
     {
