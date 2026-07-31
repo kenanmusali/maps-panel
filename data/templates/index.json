@@ -29,6 +29,11 @@
       "id": 7,
       "name": "Daxili daşımalar departamenti",
       "parentId": null
+    },
+    {
+      "id": 8,
+      "name": "Əməliyyatların konfiqurasiyası və transformasiya departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
