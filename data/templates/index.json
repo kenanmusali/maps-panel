@@ -59,6 +59,11 @@
       "id": 13,
       "name": "Marketinq və Kommunikasiya departamenti",
       "parentId": null
+    },
+    {
+      "id": 14,
+      "name": "Maliyyə departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
