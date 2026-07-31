@@ -64,6 +64,11 @@
       "id": 14,
       "name": "Maliyyə departamenti",
       "parentId": null
+    },
+    {
+      "id": 15,
+      "name": "Manevra və planlama ofisi",
+      "parentId": null
     }
   ],
   "pdfs": [],
