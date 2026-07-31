@@ -99,6 +99,11 @@
       "id": 22,
       "name": "Vahid pəncərə departamenti",
       "parentId": null
+    },
+    {
+      "id": 23,
+      "name": "MB BROKER MMC",
+      "parentId": null
     }
   ],
   "pdfs": [],
