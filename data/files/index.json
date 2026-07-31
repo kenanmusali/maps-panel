@@ -95,6 +95,11 @@
     {
       "id": 24,
       "name": "Abşeron Express MMC"
+    },
+    {
+      "id": 25,
+      "name": "Ümumi siyasət və sertifikatlar",
+      "parentId": null
     }
   ],
   "pdfs": [
