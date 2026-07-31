@@ -84,6 +84,11 @@
       "id": 19,
       "name": "Təmir və texnikaya nəzarət şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 20,
+      "name": "Təsərrüfat şöbəsi",
+      "parentId": null
     }
   ],
   "pdfs": [],
