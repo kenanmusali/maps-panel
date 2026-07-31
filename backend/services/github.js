@@ -143,39 +143,34 @@ export async function putFile(p, contentObject, { message, sha, author } = {}) {
   if (!hasGithubConfig()) return { ok: true };
 
   try {
-    const { GITHUB_BRANCH } = cfg();
+    return await withPathLock(p, async () => {
+      const { GITHUB_BRANCH } = cfg();
 
-    if (sha === undefined) {
-      sha = await ghGetBinarySha(p).catch(() => null);
-    }
+      let effectiveSha = sha;
+      if (effectiveSha === undefined) {
+        effectiveSha = await ghGetBinarySha(p).catch(() => null);
+      }
 
-    const content = Buffer.from(
-      JSON.stringify(contentObject, null, 2) + '\n',
-      'utf8'
-    ).toString('base64');
+      const content = Buffer.from(
+        JSON.stringify(contentObject, null, 2) + '\n',
+        'utf8'
+      ).toString('base64');
 
-    const body = {
-      message: message || `Update ${p}`,
-      content,
-      branch: GITHUB_BRANCH
-    };
+      const body = {
+        message: message || `Update ${p}`,
+        content,
+        branch: GITHUB_BRANCH
+      };
 
-    if (author) {
-      body.author = author;
-      body.committer = author;
-    }
+      if (author) {
+        body.author = author;
+        body.committer = author;
+      }
 
-    if (sha && sha !== 'local') body.sha = sha;
+      if (effectiveSha && effectiveSha !== 'local') body.sha = effectiveSha;
 
-    const res = await fetch(urlFor(p), {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify(body)
+      return putToGithub(p, body);
     });
-
-    if (!res.ok) throw new Error(await res.text());
-
-    return res.json();
   } catch (e) {
     console.error('[putFile] GitHub sync failed:', e.message);
     // On Vercel the local mirror lives in /tmp and is wiped between cold
@@ -198,22 +193,24 @@ export async function deleteFile(p, { message, author } = {}) {
   if (!hasGithubConfig()) return { ok: true };
 
   try {
-    const sha = await ghGetBinarySha(p).catch(() => null);
-    if (!sha) return { ok: true };
+    return await withPathLock(p, async () => {
+      const sha = await ghGetBinarySha(p).catch(() => null);
+      if (!sha) return { ok: true };
 
-    const { GITHUB_BRANCH } = cfg();
-    const res = await fetch(urlFor(p), {
-      method: 'DELETE',
-      headers: headers(),
-      body: JSON.stringify({
-        message: message || `Delete ${p}`,
-        sha,
-        branch: GITHUB_BRANCH,
-        ...(author ? { author, committer: author } : {})
-      })
+      const { GITHUB_BRANCH } = cfg();
+      const res = await fetch(urlFor(p), {
+        method: 'DELETE',
+        headers: headers(),
+        body: JSON.stringify({
+          message: message || `Delete ${p}`,
+          sha,
+          branch: GITHUB_BRANCH,
+          ...(author ? { author, committer: author } : {})
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   } catch (e) {
     console.error('[deleteFile] GitHub sync failed:', e.message);
     if (isVercel) {
@@ -272,6 +269,50 @@ async function ghGetBinarySha(p) {
   return data.sha || null;
 }
 
+/* ============================================================
+   PER-PATH WRITE SERIALIZATION + 409 (SHA CONFLICT) RETRY
+   ------------------------------------------------------------
+   Two things were causing "does not match <sha>" 409 errors:
+   1) Two writes to the same path (e.g. index.json + archive.json
+      saves fired back-to-back from a batch save) could race: both
+      read the same starting sha before either PUT completed, so the
+      second PUT always got rejected.
+   2) Even a single write could lose a sha race against itself if the
+      sha was fetched slightly before a concurrent request updated it.
+   withPathLock() forces every write to a given repo path to run one
+   at a time (within this server process). putToGithub() additionally
+   retries once on a 409 by re-fetching the latest sha and re-sending
+   the PUT — this recovers automatically instead of surfacing an
+   error to the admin for what's usually just a timing hiccup.
+   ============================================================ */
+const pathLocks = new Map();
+function withPathLock(p, fn) {
+  const prev = pathLocks.get(p) || Promise.resolve();
+  const run = prev.then(fn, fn);
+  pathLocks.set(p, run.catch(() => {}));
+  return run;
+}
+
+async function putToGithub(p, body, attempt = 0) {
+  const res = await fetch(urlFor(p), {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(body)
+  });
+
+  if (res.status === 409 && attempt < 2) {
+    // Someone else's write landed between our sha read and our PUT.
+    // Re-fetch the current sha and try again with it.
+    const freshSha = await ghGetBinarySha(p).catch(() => null);
+    if (freshSha) {
+      return putToGithub(p, { ...body, sha: freshSha }, attempt + 1);
+    }
+  }
+
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function getBinary(p) {
   if (!hasGithubConfig()) return localGetBinary(p);
 
@@ -307,23 +348,19 @@ export async function putBinary(p, buffer, { message, author } = {}) {
   if (!hasGithubConfig()) return { ok: true };
 
   try {
-    const { GITHUB_BRANCH } = cfg();
-    const sha = await ghGetBinarySha(p).catch(() => null);
-    const body = {
-      message: message || `Update ${p}`,
-      content: buffer.toString('base64'),
-      branch: GITHUB_BRANCH
-    };
-    if (sha) body.sha = sha;
-    if (author) { body.author = author; body.committer = author; }
+    return await withPathLock(p, async () => {
+      const { GITHUB_BRANCH } = cfg();
+      const sha = await ghGetBinarySha(p).catch(() => null);
+      const body = {
+        message: message || `Update ${p}`,
+        content: buffer.toString('base64'),
+        branch: GITHUB_BRANCH
+      };
+      if (sha) body.sha = sha;
+      if (author) { body.author = author; body.committer = author; }
 
-    const res = await fetch(urlFor(p), {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify(body)
+      return putToGithub(p, body);
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   } catch (e) {
     console.error('[putBinary] GitHub sync failed:', e.message);
     if (isVercel) {
@@ -341,22 +378,24 @@ export async function deleteBinary(p, { message, author } = {}) {
   if (!hasGithubConfig()) return { ok: true };
 
   try {
-    const sha = await ghGetBinarySha(p);
-    if (!sha) return { ok: true };
+    return await withPathLock(p, async () => {
+      const sha = await ghGetBinarySha(p);
+      if (!sha) return { ok: true };
 
-    const { GITHUB_BRANCH } = cfg();
-    const res = await fetch(urlFor(p), {
-      method: 'DELETE',
-      headers: headers(),
-      body: JSON.stringify({
-        message: message || `Delete ${p}`,
-        sha,
-        branch: GITHUB_BRANCH,
-        ...(author ? { author, committer: author } : {})
-      })
+      const { GITHUB_BRANCH } = cfg();
+      const res = await fetch(urlFor(p), {
+        method: 'DELETE',
+        headers: headers(),
+        body: JSON.stringify({
+          message: message || `Delete ${p}`,
+          sha,
+          branch: GITHUB_BRANCH,
+          ...(author ? { author, committer: author } : {})
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   } catch (e) {
     console.error('[deleteBinary] GitHub sync failed:', e.message);
     if (isVercel) {

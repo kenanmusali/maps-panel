@@ -4,6 +4,22 @@ import { getFile, putFile, deleteFile, getBinary, putBinary, deleteBinary, attri
 const router = Router();
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
 
+// Uploads used to be accepted with no server-side check at all — any file
+// type, any size (bounded only by the raw express.json body limit, which
+// just produced an ugly generic error). Enforce PDF-only + a sane max size
+// here so bad uploads get a clear 400 instead of silently going through or
+// blowing up further down the line.
+const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20MB
+function validateUpload(filename, buf) {
+  if (filename && !/\.pdf$/i.test(filename)) {
+    return 'Yalnız PDF fayl qəbul olunur';
+  }
+  if (buf.length > MAX_PDF_BYTES) {
+    return `Fayl çox böyükdür (maks. ${MAX_PDF_BYTES / (1024 * 1024)}MB)`;
+  }
+  return null;
+}
+
 const pdfIndexPath     = () => `${dataPath()}/files/index.json`;
 const pdfArchivePath   = () => `${dataPath()}/files/archive.json`;
 const pdfFilePathFiles = (id) => `${dataPath()}/files/pdf/pdf-${id}.pdf`;
@@ -316,6 +332,8 @@ router.post('/', requireAdmin, async (req, res, next) => {
 
     const newId = nextId(idx.pdfs);
     const buf = Buffer.from(dataBase64, 'base64');
+    const uploadError = validateUpload(filename, buf);
+    if (uploadError) return res.status(400).json({ error: uploadError });
     await putBinary(pdfFilePathFiles(newId), buf, attribution(req.user, `Add pdf ${newId}`));
 
     const entry = {
@@ -351,6 +369,8 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
     }
     if (dataBase64) {
       const buf = Buffer.from(dataBase64, 'base64');
+      const uploadError = validateUpload(filename, buf);
+      if (uploadError) return res.status(400).json({ error: uploadError });
       await putBinary(pdfFilePathFiles(id), buf, attribution(req.user, `Replace pdf ${id}`));
       updated.size = buf.length;
       updated.uploadedAt = new Date().toISOString();

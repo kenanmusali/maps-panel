@@ -32,13 +32,30 @@ export default function PdfFormModal({ mode, pdf, groups = [], defaultGroupId, o
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+
   function pickFile(e) {
     const f = e.target.files?.[0];
     if (!f) return setFile(null);
-    if (f.type && f.type !== 'application/pdf') {
+
+    // Some browsers/OSes don't report a MIME type at all (f.type === '').
+    // The old check only rejected a file when f.type was set AND wrong,
+    // so an empty type silently let ANY file through (docx, xlsx, exe...).
+    // Checking the file extension as well closes that gap.
+    const isPdfType = !f.type || f.type === 'application/pdf';
+    const isPdfExt = /\.pdf$/i.test(f.name || '');
+    if (!isPdfType || !isPdfExt) {
       setError('Yalnız PDF fayl seçin');
+      e.target.value = '';
       return;
     }
+
+    if (f.size > MAX_FILE_BYTES) {
+      setError(`Fayl çox böyükdür (maks. ${MAX_FILE_BYTES / (1024 * 1024)}MB)`);
+      e.target.value = '';
+      return;
+    }
+
     setError('');
     setFile(f);
   }

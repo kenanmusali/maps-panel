@@ -51,8 +51,12 @@ app.use(cors({
 }));
 
 // JSON
+// Uploads are sent as base64 inside JSON, which inflates size by ~33%.
+// The app enforces a 20MB PDF cap (see routes/pdfs.js, routes/templates.js);
+// this body limit just needs enough headroom above that so a legitimate
+// 20MB file isn't rejected by Express before it ever reaches that check.
 app.use(express.json({
-  limit: '25mb'
+  limit: '30mb'
 }));
 
 // DEBUG
