@@ -44,6 +44,11 @@
       "id": 10,
       "name": "İnformasiya texnologiyaları şöbəsi",
       "parentId": null
+    },
+    {
+      "id": 11,
+      "name": "İnsan resursları və inzibati departament",
+      "parentId": null
     }
   ],
   "pdfs": [],
