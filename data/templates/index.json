@@ -39,6 +39,11 @@
       "id": 9,
       "name": "Hüquq departamenti",
       "parentId": null
+    },
+    {
+      "id": 10,
+      "name": "İnformasiya texnologiyaları şöbəsi",
+      "parentId": null
     }
   ],
   "pdfs": [],
