@@ -24,6 +24,11 @@
       "id": 6,
       "name": "Daxili audit departamenti",
       "parentId": null
+    },
+    {
+      "id": 7,
+      "name": "Daxili daşımalar departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
