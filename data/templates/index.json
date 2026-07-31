@@ -34,6 +34,11 @@
       "id": 8,
       "name": "Əməliyyatların konfiqurasiyası və transformasiya departamenti",
       "parentId": null
+    },
+    {
+      "id": 9,
+      "name": "Hüquq departamenti",
+      "parentId": null
     }
   ],
   "pdfs": [],
