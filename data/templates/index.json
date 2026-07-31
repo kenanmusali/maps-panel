@@ -59,6 +59,16 @@
       "id": 14,
       "name": "Maliyyə departamenti",
       "parentId": null
+    },
+    {
+      "id": 15,
+      "name": "Manevra və planlama ofisi",
+      "parentId": null
+    },
+    {
+      "id": 4,
+      "name": "Anbar logistikası şöbəsi",
+      "parentId": null
     }
   ],
   "pdfs": [],
