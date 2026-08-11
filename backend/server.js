@@ -16,6 +16,7 @@ import pdfsRouter from './routes/pdfs.js';
 import templatesRouter from './routes/templates.js';
 import settingsRouter from './routes/settings.js';
 import labelsRouter from './routes/labels.js';
+import sheetsRouter from './routes/sheets.js';
 import aiRouter from './routes/ai.js';
 import { diagnose } from './services/github.js';
 import { diagnose as diagnoseMongo } from './services/store.js';
@@ -87,6 +88,7 @@ app.use(['/api/pdfs', '/pdfs'], requireAuth, pdfsRouter);
 app.use(['/api/templates', '/templates'], requireAuth, templatesRouter);
 app.use(['/api/settings', '/settings'], requireAuth, settingsRouter);
 app.use(['/api/labels', '/labels'], requireAuth, labelsRouter);
+app.use(['/api/sheets', '/sheets'], requireAuth, sheetsRouter);
 app.use(['/api/ai', '/ai'], requireAuth, aiRouter);
 
 // 404 — show the URL Express actually saw, so we can debug from Vercel logs

@@ -7,11 +7,12 @@ import Home from './components/Home.jsx';
 import Diagram from './components/Diagram.jsx';
 import PdfList from './components/pdfs/PdfList.jsx';
 import TemplateList from './components/pdfs/TemplateList.jsx';
+import SheetsPage from './components/SheetsPage.jsx';
 import EditorBar from './components/EditorBar.jsx';
 import { LabelsProvider } from './labels/LabelsContext.jsx';
 
 export default function App() {
-  // views: 'login' | 'hub' | 'diagrams' | 'pdfs' | 'templates' | 'files' | 'diagram'
+  // views: 'login' | 'hub' | 'diagrams' | 'pdfs' | 'templates' | 'files' | 'diagram' | 'sheets'
   const [view, setView] = useState('login');
   const [user, setUser] = useState(null);
   const [processId, setProcessId] = useState(null);
@@ -106,6 +107,10 @@ export default function App() {
     setView('diagrams');
   }
 
+  function openSheets() {
+    setView('sheets');
+  }
+
   function backToHub() {
     setProcessId(null);
     setFocusNodeId(null);
@@ -126,7 +131,19 @@ export default function App() {
     }
 
     if (view === 'diagrams') {
-      return <Home onOpen={openProcess} onLogout={onLogout} onBack={backToHub} focusProcessId={lastOpenedProcessId} />;
+      return (
+        <Home
+          onOpen={openProcess}
+          onLogout={onLogout}
+          onBack={backToHub}
+          onOpenSheets={openSheets}
+          focusProcessId={lastOpenedProcessId}
+        />
+      );
+    }
+
+    if (view === 'sheets') {
+      return <SheetsPage onBack={backToDiagrams} onLogout={onLogout} />;
     }
 
     if (view === 'pdfs') {

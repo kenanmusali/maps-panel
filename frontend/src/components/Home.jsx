@@ -5,7 +5,7 @@ import {
   ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown,
   Folder, FolderOpen, FolderPlus, Pencil, Edit3, GripVertical, Save, Check, Undo2
 } from './icons.jsx';
-import { Archive, ArchiveRestore } from 'lucide-react';
+import { Archive, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
 import { api, setToken } from '../api/client.js';
 import NameModal from './NameModal.jsx';
 import TitleEditButton from './TitleEditButton.jsx';
@@ -50,7 +50,7 @@ function ancestorGroupIds(groupId, gs) {
   return ids;
 }
 
-export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
+export default function Home({ onOpen, onLogout, onBack, onOpenSheets, focusProcessId }) {
   const { t, tByText, rawByText, LabelPen } = useLabels();
   const [now, setNow] = useState(new Date());
   const [query, setQuery] = useState('');
@@ -67,6 +67,7 @@ export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
   const [settings, setSettings] = useState(null);
   const [pendingArchive, setPendingArchive] = useState(null); // process id awaiting confirm
   const [aiOpen, setAiOpen] = useState(false);
+  const [sheetOptions, setSheetOptions] = useState([]);
   const searchInputRef = useRef(null);
   // ---- restoring position on return from a diagram (fix 15) ----
   const itemRefs = useRef({});         // processId -> row DOM node
@@ -166,6 +167,14 @@ export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
       pristineProcessesRef.current = data.processes || [];
       setDirty(false);
       setSaveError('');
+      // Unused sheet rows for the Yeni diaqram picker (best-effort)
+      try {
+        const sheets = await api.listSheets();
+        const unused = (sheets?.items || []).filter(r => r.processId == null);
+        setSheetOptions(unused);
+      } catch {
+        setSheetOptions([]);
+      }
     } catch (e) {
       setError(e.message);
       if (e.status === 401) onLogout();
@@ -496,13 +505,22 @@ export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
   }
 
   /* ---------- diagram actions ---------- */
-  async function saveDiagramCreate({ name, subtitle, groupId }) {
+  async function saveDiagramCreate({ name, subtitle, groupId, sheetId, status }) {
     setBusy(true);
     try {
-      const p = await api.createProcess({
-        title: name, subtitle, groupId: groupId || modal.groupId,
-        width: 2200, height: 900, lanes: [], nodes: [], edges: []
-      });
+      const payload = {
+        title: name,
+        subtitle,
+        groupId: groupId || modal.groupId,
+        width: 2200,
+        height: 900,
+        lanes: [],
+        nodes: [],
+        edges: []
+      };
+      if (sheetId != null) payload.sheetId = sheetId;
+      if (status) payload.status = status;
+      const p = await api.createProcess(payload);
       setModal(null);
       await load();
       onOpen(p.id);
@@ -977,6 +995,12 @@ export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
           {loading && <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>}
           {error && !loading && <div className="empty-state error">{error}</div>}
           {noResults && <div className="empty-state">Heç bir qrup yoxdur</div>}
+        {!isViewer && !loading && onOpenSheets && (
+            <button className="process-item create-btn sheets-open-btn" onClick={onOpenSheets} disabled={busy}>
+              <div className="num"><FileSpreadsheet size={20} /></div>
+              <div className="label">{t('home.open_sheets', 'Open Sheets table')}</div>
+            </button>
+          )}
         {!isViewer && !loading && (
             <button className="process-item create-btn" onClick={() => setModal({ type: 'group-create', parentId: null })} disabled={busy}>
               <div className="num"><FolderPlus size={20} /></div>
@@ -1069,6 +1093,7 @@ export default function Home({ onOpen, onLogout, onBack, focusProcessId }) {
           withGroup groups={groups.filter(g => !isTempId(g.id))} groupId0={modal.groupId}
           namePlaceholder="Əsas ad" subtitlePlaceholder="Qısa ikinci ad (məcburi deyil)"
           saveLabel="Yarat və aç"
+          sheetOptions={sheetOptions}
           withImport onImport={importDiagramExcel} onImportJson={importDiagramJson} onTemplate={downloadTemplate}
           onClose={() => setModal(null)} onSave={saveDiagramCreate} />
       )}

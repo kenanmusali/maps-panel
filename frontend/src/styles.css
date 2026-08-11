@@ -2565,3 +2565,147 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 }
 .tedit-pen-loose.is-overridden { color: #fff; background: var(--primary); }
 .tedit-input-loose { max-width: 220px; }
+
+/* ============================================================
+   DIAGRAM SHEETS TABLE
+   ============================================================ */
+.sheets-wrap { max-width: 1100px; }
+.sheets-sub {
+  display: block; margin-top: 6px;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+}
+.sheets-table-wrap {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-xs);
+  overflow: auto;
+}
+.sheets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sheets-table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--bg-soft);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.sheets-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+.sheets-table tr:last-child td { border-bottom: none; }
+.sheets-table tr.sheet-only { background: transparent; }
+.sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
+.sheets-table .col-n { width: 48px; text-align: center; color: var(--text-muted); font-weight: 600; }
+.sheets-table .col-title { min-width: 220px; }
+.sheets-table .col-sub { min-width: 160px; }
+.sheets-table .col-status { width: 170px; }
+.sheets-table .col-date { width: 110px; color: var(--text-secondary); white-space: nowrap; }
+.sheets-table .col-act { width: 44px; text-align: center; }
+.sheets-cell-input {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--r-xs);
+  padding: 6px 8px;
+  font: inherit;
+  color: inherit;
+}
+.sheets-cell-input:hover { border-color: var(--border-soft); background: var(--surface); }
+.sheets-cell-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: var(--ring);
+}
+.sheets-draft-row td { background: color-mix(in srgb, var(--primary-soft) 25%, var(--surface)); }
+.sheets-draft-row .col-n { color: var(--primary); }
+.sheets-del:hover { color: var(--danger); }
+.create-btn.sheets-open-btn .num { color: var(--primary); }
+
+/* NameModal — Sheets picker next to diagram name */
+.nm-name-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+.nm-name-row input { flex: 1; min-width: 0; }
+.nm-name-row.with-sheet input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.nm-sheet-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.nm-sheet-chevron:hover { color: var(--primary); background: var(--primary-soft); }
+.nm-sheet-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  box-shadow: var(--sh-md);
+}
+.nm-sheet-menu-head {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nm-sheet-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-soft);
+}
+.nm-sheet-option:last-child { border-bottom: none; }
+.nm-sheet-option:hover { background: var(--primary-soft); }
+.nm-sheet-option-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.nm-sheet-option-sub { font-size: 11.5px; color: var(--text-muted); }
+.nm-sheet-option-status {
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+.nm-sheet-option-status.done { color: var(--success, #1a7f4b); }
+.nm-sheet-option-status.progress { color: var(--warning, #b7791f); }
+.nm-sheet-option-status.sign { color: var(--primary); }
+.nm-sheet-option-status.notdone { color: var(--danger); }

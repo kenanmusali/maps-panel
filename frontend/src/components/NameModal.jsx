@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
-import { X, Loader2 } from './icons.jsx';
+import { useState, useRef, useEffect } from 'react';
+import { X, Loader2, ChevronDown } from './icons.jsx';
 import { FileSpreadsheet, Download, FileJson } from 'lucide-react';
 import { useLabels } from '../labels/LabelsContext.jsx';
+import { STATUS_META } from './Status.jsx';
 
 // Flattens a flat groups array (with optional parentId) into depth-first
 // order, so a plain <select> can show nested groups with indentation.
@@ -23,9 +24,10 @@ function orderedGroupOptions(groups) {
 }
 
 // Generic modal: heading + name field (+ optional subtitle + optional group select).
-// onSave({ name, subtitle, groupId }) may be async.
+// onSave({ name, subtitle, groupId, sheetId?, status? }) may be async.
 // Optional Excel import: pass withImport + onImport(file, { groupId }) (async) and
 // optionally onTemplate() to offer a template download.
+// Optional sheetOptions: unused Sheets rows — chevron picks one to fill name/subtitle/status.
 export default function NameModal({
   heading,
   nameLabel = 'Ad',
@@ -43,18 +45,44 @@ export default function NameModal({
   onImport,
   onImportJson,
   onTemplate,
+  sheetOptions = null,
   onClose,
   onSave
 }) {
-  const { tByText } = useLabels();
+  const { tByText, t } = useLabels();
   const [name, setName] = useState(name0);
   const [subtitle, setSubtitle] = useState(subtitle0);
   const [groupId, setGroupId] = useState(groupId0 ?? (groups[0]?.id ?? null));
+  const [sheetId, setSheetId] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
   const jsonRef = useRef(null);
+  const sheetMenuRef = useRef(null);
+
+  const hasSheets = Array.isArray(sheetOptions) && sheetOptions.length > 0;
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    function onDoc(e) {
+      if (sheetMenuRef.current && !sheetMenuRef.current.contains(e.target)) {
+        setSheetOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [sheetOpen]);
+
+  function pickSheet(row) {
+    setName(row.title || '');
+    setSubtitle(row.subtitle || '');
+    setStatus(row.status || null);
+    setSheetId(row.id);
+    setSheetOpen(false);
+  }
 
   async function pickFile(e) {
     const file = e.target.files?.[0];
@@ -67,6 +95,7 @@ export default function NameModal({
       await onImport(file, { groupId: withGroup ? Number(groupId) : undefined });
     } catch (err) {
       setError(err.message || 'Excel oxuna bilmədi');
+    } finally {
       setImporting(false);
     }
   }
@@ -82,6 +111,7 @@ export default function NameModal({
       await onImportJson(file, { groupId: withGroup ? Number(groupId) : undefined });
     } catch (err) {
       setError(err.message || 'JSON oxuna bilmədi');
+    } finally {
       setImporting(false);
     }
   }
@@ -96,7 +126,9 @@ export default function NameModal({
       await onSave({
         name: name.trim(),
         subtitle: subtitle.trim(),
-        groupId: withGroup ? Number(groupId) : undefined
+        groupId: withGroup ? Number(groupId) : undefined,
+        sheetId: sheetId != null ? Number(sheetId) : undefined,
+        status: status || undefined
       });
     } catch (err) {
       setError(err.message || 'Xəta');
@@ -117,13 +149,54 @@ export default function NameModal({
         <div className="pdf-modal-body">
           <div className="pdf-field">
             <label>{tByText(nameLabel)}</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={namePlaceholder}
-              autoFocus
-            />
+            <div className={`nm-name-row ${hasSheets ? 'with-sheet' : ''}`} ref={sheetMenuRef}>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setSheetId(null); }}
+                placeholder={namePlaceholder}
+                autoFocus
+              />
+              {hasSheets && (
+                <>
+                  <button
+                    type="button"
+                    className="nm-sheet-chevron"
+                    title={tByText('Sheets-dən seç')}
+                    onClick={() => setSheetOpen(o => !o)}
+                    aria-expanded={sheetOpen}
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                  {sheetOpen && (
+                    <div className="nm-sheet-menu">
+                      <div className="nm-sheet-menu-head">{tByText('Sheets-dən seç')}</div>
+                      {sheetOptions.map(row => {
+                        const st = row.status && STATUS_META[row.status];
+                        return (
+                          <button
+                            key={row.id}
+                            type="button"
+                            className="nm-sheet-option"
+                            onClick={() => pickSheet(row)}
+                          >
+                            <span className="nm-sheet-option-title">{row.title}</span>
+                            {row.subtitle ? (
+                              <span className="nm-sheet-option-sub">{row.subtitle}</span>
+                            ) : null}
+                            {st ? (
+                              <span className={`nm-sheet-option-status ${st.cls}`}>
+                                {t(st.id, st.default)}
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {withSubtitle && (
