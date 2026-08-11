@@ -805,7 +805,7 @@ export default function PdfList({
       {isAdmin && !loading && onOpenSheets && (
             <button className="process-item create-btn sheets-open-btn" onClick={onOpenSheets}>
               <div className="num"><FileSpreadsheet size={20} /></div>
-              <div className="label">{t('home.open_sheets', 'Open Sheets table')}</div>
+              <div className="label">{t('home.open_sheets', 'Sheets cədvəlini aç')}</div>
             </button>
           )}
       {isAdmin && !loading && (
