@@ -84,6 +84,12 @@ export const api = {
   getSettings: () => request('GET', '/api/settings'),
   updateSettings: (patch) => request('PUT', '/api/settings', patch),
 
+  // Diagram Sheets catalog (raw list; sheet-only rows do not create processes)
+  listSheets: () => request('GET', '/api/sheets'),
+  createSheet: (data) => request('POST', '/api/sheets', data),
+  updateSheet: (id, data) => request('PUT', `/api/sheets/${id}`, data),
+  deleteSheet: (id) => request('DELETE', `/api/sheets/${id}`),
+
   // Interface-text labels (editor_2 role only writes; everyone reads)
   getLabels: () => request('GET', '/api/labels'),
   setLabel: (id, text) => request('PUT', '/api/labels', { id, text }),

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getFile, putFile, deleteFile, attribution } from '../services/store.js';
+import { syncFromProcess } from '../services/sheetsStore.js';
 
 const router = Router();
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
@@ -283,6 +284,13 @@ router.put('/:id/status', async (req, res, next) => {
     if (!entry) return res.status(404).json({ error: 'Process not found' });
     if (status === null) delete entry.status; else entry.status = status;
     await writeIndex(idx, `Set status for process ${id}`, req.user);
+    // Keep Sheets catalog in sync (best-effort — diagram write already succeeded)
+    await syncFromProcess({
+      processId: id,
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      status
+    }, req.user).catch((e) => console.error('[sheets sync status]', e.message));
     res.json({ id, status });
   } catch (e) { next(e); }
 });
@@ -297,6 +305,12 @@ router.post('/', async (req, res, next) => {
     const newId = req.body.id || nextId(idx.processes);
     const title = req.body.title || `Yeni proses ${newId}`;
     const subtitle = req.body.subtitle ? String(req.body.subtitle) : '';
+    const sheetId = req.body.sheetId != null ? Number(req.body.sheetId) : null;
+    const statusRaw = req.body.status;
+    const status = statusRaw == null || statusRaw === '' ? null : String(statusRaw);
+    if (status !== null && !ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({ error: 'Yanlış status' });
+    }
 
     const process = {
       id: newId, title, subtitle,
@@ -308,9 +322,19 @@ router.post('/', async (req, res, next) => {
     };
     if (req.body.theme && typeof req.body.theme === 'object') process.theme = req.body.theme;
     await putFile(processPath(newId), process, attribution(req.user, `Create process ${newId}`));
-    idx.processes = [...idx.processes, { id: newId, title, subtitle, groupId }];
+    const indexEntry = { id: newId, title, subtitle, groupId };
+    if (status) indexEntry.status = status;
+    idx.processes = [...idx.processes, indexEntry];
     await writeIndex(idx, `Add process ${newId} to index`, req.user);
-    res.status(201).json(process);
+    // One-way: İş Axışları create → Sheets upsert (links sheetId when picked)
+    await syncFromProcess({
+      processId: newId,
+      title,
+      subtitle,
+      status,
+      sheetId: Number.isFinite(sheetId) ? sheetId : undefined
+    }, req.user).catch((e) => console.error('[sheets sync create]', e.message));
+    res.status(201).json({ ...process, status: status || null });
   } catch (e) { next(e); }
 });
 
@@ -334,6 +358,12 @@ router.put('/:id/meta', async (req, res, next) => {
       const body = { ...file.content, title: entry.title, subtitle: entry.subtitle };
       await putFile(processPath(id), body, attribution(req.user, `Sync meta for process ${id}`));
     }
+    await syncFromProcess({
+      processId: id,
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      status: entry.status ?? null
+    }, req.user).catch((e) => console.error('[sheets sync meta]', e.message));
     res.json(entry);
   } catch (e) { next(e); }
 });
@@ -358,7 +388,15 @@ router.put('/:id', async (req, res, next) => {
       if (typeof body.subtitle === 'string' && idx.processes[i].subtitle !== body.subtitle) {
         idx.processes[i].subtitle = body.subtitle; changed = true;
       }
-      if (changed) await writeIndex(idx, `Sync title for process ${id}`, req.user);
+      if (changed) {
+        await writeIndex(idx, `Sync title for process ${id}`, req.user);
+        await syncFromProcess({
+          processId: Number(id),
+          title: idx.processes[i].title,
+          subtitle: idx.processes[i].subtitle || '',
+          status: idx.processes[i].status ?? null
+        }, req.user).catch((e) => console.error('[sheets sync put]', e.message));
+      }
     }
     res.json(body);
   } catch (e) { next(e); }
