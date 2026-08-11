@@ -154,15 +154,14 @@ export default function SheetsPage({
   return (
     <>
       <div className="topbar">
-        <div className="left">
-          <button className="back-btn" onClick={onBack} title="Geri">
-            <ChevronLeft size={18} />
-            <span>{t('topbar.back', 'Geri')}</span>
+        <div className="top-left">
+          <button className="pill-chip back-chip" onClick={onBack}>
+            <ChevronLeft size={16} /><span>{tByText('Geri')}</span>
           </button>
-          <span className="time">{fmtTime(now)}</span>
-          <span className="date">{fmtClockDate(now)}</span>
+          <div className="pill-chip">{fmtTime(now)}</div>
+          <div className="pill-chip">{fmtClockDate(now)}</div>
         </div>
-        <div className="right">
+        <div className="top-right">
           <button className="logout-btn" onClick={onLogout}>
             <LogOut size={16} /><span>{t('topbar.logout', 'Çıxış')}</span>
           </button>
