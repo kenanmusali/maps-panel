@@ -31,11 +31,38 @@ function fmtClockDate(d) {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
-export default function SheetsPage({ onBack, onLogout }) {
+const KIND_META = {
+  diagrams: {
+    title: 'Sheets',
+    sub: 'Diaqram kataloqu — İş Axışlarından ayrıca',
+    namePh: 'Yeni diaqram adı…',
+    subPh: 'İkinci ad…'
+  },
+  pdfs: {
+    title: 'Sheets',
+    sub: 'Sənəd kataloqu — Normativ Sənədlərdən ayrıca',
+    namePh: 'Yeni sənəd adı…',
+    subPh: 'İkinci ad…'
+  },
+  templates: {
+    title: 'Sheets',
+    sub: 'Şablon kataloqu — Şablonlardan ayrıca',
+    namePh: 'Yeni şablon adı…',
+    subPh: 'İkinci ad…'
+  }
+};
+
+export default function SheetsPage({
+  kind = 'diagrams',
+  onBack,
+  onLogout,
+  withStatus = true
+}) {
   const { t, tByText } = useLabels();
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin';
   const isViewer = role === 'viewer' || role === 'editor_2';
+  const meta = KIND_META[kind] || KIND_META.diagrams;
 
   const [now, setNow] = useState(new Date());
   const [items, setItems] = useState([]);
@@ -43,7 +70,6 @@ export default function SheetsPage({ onBack, onLogout }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Draft row for quick-add (title required to commit)
   const [draftTitle, setDraftTitle] = useState('');
   const [draftSubtitle, setDraftSubtitle] = useState('');
   const [draftStatus, setDraftStatus] = useState(null);
@@ -58,7 +84,7 @@ export default function SheetsPage({ onBack, onLogout }) {
     setLoading(true);
     setError('');
     try {
-      const data = await api.listSheets();
+      const data = await api.listSheets(kind);
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (e) {
       setError(e.message || 'Yüklənmədi');
@@ -67,17 +93,16 @@ export default function SheetsPage({ onBack, onLogout }) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [kind]);
 
   async function commitDraft() {
-    const title = draftTitle.trim();
-    if (!title || busy || !isAdmin) return;
+    if (busy || !isAdmin) return;
     setBusy(true);
     try {
-      const row = await api.createSheet({
-        title,
+      const row = await api.createSheet(kind, {
+        title: draftTitle.trim(),
         subtitle: draftSubtitle.trim(),
-        status: draftStatus
+        status: withStatus ? draftStatus : null
       });
       setItems(prev => [...prev, row]);
       setDraftTitle('');
@@ -95,7 +120,7 @@ export default function SheetsPage({ onBack, onLogout }) {
     if (!isAdmin) return;
     setItems(prev => prev.map(x => Number(x.id) === Number(id) ? { ...x, ...patch } : x));
     try {
-      const updated = await api.updateSheet(id, patch);
+      const updated = await api.updateSheet(kind, id, patch);
       setItems(prev => prev.map(x => Number(x.id) === Number(id) ? updated : x));
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Yenilənmədi'));
@@ -105,9 +130,9 @@ export default function SheetsPage({ onBack, onLogout }) {
 
   async function removeRow(id) {
     if (!isAdmin) return;
-    if (!confirm('Bu sətir Sheets-dən silinsin? (İş Axışları diaqramına toxunmur)')) return;
+    if (!confirm('Bu sətir Sheets-dən silinsin? (Əsas siyahıya toxunmur)')) return;
     try {
-      await api.deleteSheet(id);
+      await api.deleteSheet(kind, id);
       setItems(prev => prev.filter(x => Number(x.id) !== Number(id)));
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
@@ -120,6 +145,8 @@ export default function SheetsPage({ onBack, onLogout }) {
       commitDraft();
     }
   }
+
+  const linked = (row) => row.itemId != null || row.processId != null;
 
   return (
     <>
@@ -142,8 +169,8 @@ export default function SheetsPage({ onBack, onLogout }) {
       <div className="home-wrap sheets-wrap">
         <LogoFull size="large" />
         <h2 className="home-title">
-          {tByText('Sheets')}
-          <span className="sheets-sub">{tByText('Diaqram kataloqu — İş Axışlarından ayrıca')}</span>
+          {tByText(meta.title)}
+          <span className="sheets-sub">{tByText(meta.sub)}</span>
         </h2>
 
         <div className="sheets-table-wrap">
@@ -161,14 +188,14 @@ export default function SheetsPage({ onBack, onLogout }) {
                   <th className="col-n">N</th>
                   <th className="col-title">{tByText('Diaqram adı')}</th>
                   <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
-                  <th className="col-status">{tByText('Status')}</th>
+                  {withStatus && <th className="col-status">{tByText('Status')}</th>}
                   <th className="col-date">{tByText('Date')}</th>
                   {isAdmin && <th className="col-act" aria-label="Actions" />}
                 </tr>
               </thead>
               <tbody>
                 {items.map((row, i) => (
-                  <tr key={row.id} className={row.processId ? 'linked' : 'sheet-only'}>
+                  <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
                     <td className="col-n">{i + 1}</td>
                     <td className="col-title">
                       {isAdmin ? (
@@ -179,13 +206,13 @@ export default function SheetsPage({ onBack, onLogout }) {
                             Number(x.id) === Number(row.id) ? { ...x, title: e.target.value } : x
                           ))}
                           onBlur={(e) => {
-                            const v = e.target.value.trim();
-                            if (v && v !== (row.title || '').trim()) patchRow(row.id, { title: v });
-                            else if (!v) load();
+                            if (e.target.value !== (row.title || '')) {
+                              patchRow(row.id, { title: e.target.value });
+                            }
                           }}
                         />
                       ) : (
-                        <span>{row.title}</span>
+                        <span>{row.title || '—'}</span>
                       )}
                     </td>
                     <td className="col-sub">
@@ -207,13 +234,15 @@ export default function SheetsPage({ onBack, onLogout }) {
                         <span>{row.subtitle || '—'}</span>
                       )}
                     </td>
-                    <td className="col-status">
-                      <StatusControl
-                        value={row.status}
-                        editable={isAdmin && !isViewer}
-                        onChange={(status) => patchRow(row.id, { status })}
-                      />
-                    </td>
+                    {withStatus && (
+                      <td className="col-status">
+                        <StatusControl
+                          value={row.status}
+                          editable={isAdmin && !isViewer}
+                          onChange={(status) => patchRow(row.id, { status })}
+                        />
+                      </td>
+                    )}
                     <td className="col-date">{fmtDate(row.date)}</td>
                     {isAdmin && (
                       <td className="col-act">
@@ -233,14 +262,22 @@ export default function SheetsPage({ onBack, onLogout }) {
                 {isAdmin && (
                   <tr className="sheets-draft-row">
                     <td className="col-n">
-                      <Plus size={14} />
+                      <button
+                        type="button"
+                        className="sheets-plus-btn"
+                        title="Əlavə et"
+                        disabled={busy}
+                        onClick={commitDraft}
+                      >
+                        {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
+                      </button>
                     </td>
                     <td className="col-title">
                       <input
                         ref={draftTitleRef}
                         className="sheets-cell-input"
                         value={draftTitle}
-                        placeholder={tByText('Yeni diaqram adı…')}
+                        placeholder={tByText(meta.namePh)}
                         onChange={(e) => setDraftTitle(e.target.value)}
                         onKeyDown={onDraftKey}
                         disabled={busy}
@@ -250,26 +287,28 @@ export default function SheetsPage({ onBack, onLogout }) {
                       <input
                         className="sheets-cell-input"
                         value={draftSubtitle}
-                        placeholder={tByText('İkinci ad…')}
+                        placeholder={tByText(meta.subPh)}
                         onChange={(e) => setDraftSubtitle(e.target.value)}
                         onKeyDown={onDraftKey}
                         disabled={busy}
                       />
                     </td>
-                    <td className="col-status">
-                      <StatusControl
-                        value={draftStatus}
-                        editable
-                        onChange={setDraftStatus}
-                      />
-                    </td>
+                    {withStatus && (
+                      <td className="col-status">
+                        <StatusControl
+                          value={draftStatus}
+                          editable
+                          onChange={setDraftStatus}
+                        />
+                      </td>
+                    )}
                     <td className="col-date">—</td>
                     <td className="col-act">
                       <button
                         type="button"
                         className="icon-btn"
                         title="Əlavə et"
-                        disabled={busy || !draftTitle.trim()}
+                        disabled={busy}
                         onClick={commitDraft}
                       >
                         {busy ? <Loader2 size={15} className="spin" /> : <FileSpreadsheet size={15} />}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getFile, putFile, deleteFile, getBinary, putBinary, deleteBinary, attribution } from '../services/github.js';
+import { syncFromItem } from '../services/sheetsStore.js';
 
 const router = Router();
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
@@ -287,6 +288,12 @@ router.put('/:id/status', requireAdmin, async (req, res, next) => {
     if (!entry) return res.status(404).json({ error: 'PDF not found' });
     if (status === null) delete entry.status; else entry.status = status;
     await writeIndex(idx, `Set status for pdf ${id}`, req.user);
+    await syncFromItem('pdfs', {
+      itemId: id,
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      status
+    }, req.user).catch((e) => console.error('[sheets sync pdf status]', e.message));
     res.json({ id, status });
   } catch (e) { next(e); }
 });
@@ -347,6 +354,13 @@ router.post('/', requireAdmin, async (req, res, next) => {
     };
     idx.pdfs = [...idx.pdfs, entry];
     await writeIndex(idx, `Add pdf ${newId} to index`, req.user);
+    await syncFromItem('pdfs', {
+      itemId: newId,
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      status: entry.status ?? null,
+      sheetId: req.body?.sheetId != null ? Number(req.body.sheetId) : undefined
+    }, req.user).catch((e) => console.error('[sheets sync pdf create]', e.message));
     res.status(201).json(entry);
   } catch (e) { next(e); }
 });
@@ -377,6 +391,12 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
     }
     idx.pdfs[i] = updated;
     await writeIndex(idx, `Update pdf ${id}`, req.user);
+    await syncFromItem('pdfs', {
+      itemId: id,
+      title: updated.title,
+      subtitle: updated.subtitle || '',
+      status: updated.status ?? null
+    }, req.user).catch((e) => console.error('[sheets sync pdf update]', e.message));
     res.json(updated);
   } catch (e) { next(e); }
 });

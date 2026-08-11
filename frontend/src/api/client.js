@@ -56,6 +56,8 @@ async function request(method, path, body) {
   return data;
 }
 
+const SHEET_KINDS = new Set(['diagrams', 'pdfs', 'templates']);
+
 export const api = {
   login: (username, password) => request('POST', '/api/login', { username, password }),
   me:    () => request('GET',  '/api/me'),
@@ -84,11 +86,29 @@ export const api = {
   getSettings: () => request('GET', '/api/settings'),
   updateSettings: (patch) => request('PUT', '/api/settings', patch),
 
-  // Diagram Sheets catalog (raw list; sheet-only rows do not create processes)
-  listSheets: () => request('GET', '/api/sheets'),
-  createSheet: (data) => request('POST', '/api/sheets', data),
-  updateSheet: (id, data) => request('PUT', `/api/sheets/${id}`, data),
-  deleteSheet: (id) => request('DELETE', `/api/sheets/${id}`),
+  // Diagram / PDF / Template Sheets catalogs (Mongo; sheet-only rows do not create items)
+  // kind: 'diagrams' | 'pdfs' | 'templates'
+  listSheets: (kind = 'diagrams') => request('GET', `/api/sheets/${kind}`),
+  createSheet: (kind, data) => {
+    if (typeof kind === 'object') {
+      // backward compat: createSheet(data) → diagrams
+      return request('POST', '/api/sheets/diagrams', kind);
+    }
+    return request('POST', `/api/sheets/${kind || 'diagrams'}`, data);
+  },
+  updateSheet: (kindOrId, idOrData, maybeData) => {
+    if (typeof kindOrId === 'string' && SHEET_KINDS.has(kindOrId)) {
+      return request('PUT', `/api/sheets/${kindOrId}/${idOrData}`, maybeData);
+    }
+    // backward compat: updateSheet(id, data)
+    return request('PUT', `/api/sheets/diagrams/${kindOrId}`, idOrData);
+  },
+  deleteSheet: (kindOrId, maybeId) => {
+    if (typeof kindOrId === 'string' && SHEET_KINDS.has(kindOrId)) {
+      return request('DELETE', `/api/sheets/${kindOrId}/${maybeId}`);
+    }
+    return request('DELETE', `/api/sheets/diagrams/${kindOrId}`);
+  },
 
   // Interface-text labels (editor_2 role only writes; everyone reads)
   getLabels: () => request('GET', '/api/labels'),

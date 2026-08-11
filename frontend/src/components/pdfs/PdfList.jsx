@@ -6,7 +6,7 @@ import {
   Eye, Edit3, Search, Folder, FolderOpen, FolderPlus, Pencil, GripVertical,
   Save, Check, Undo2
 } from '../icons.jsx';
-import { Archive, ArchiveRestore } from 'lucide-react';
+import { Archive, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
 import { api, setToken } from '../../api/client.js';
 import { pdfsApi } from '../../api/pdfsClient.js';
 import { StatusControl } from '../Status.jsx';
@@ -54,6 +54,7 @@ function normPid(g) {
 export default function PdfList({
   onBack,
   onLogout,
+  onOpenSheets,
   apiClient = pdfsApi,
   pageTitleKey = 'pdf_page_title',
   pageTitleDefault = 'Normativ Sənədlər',
@@ -801,6 +802,12 @@ export default function PdfList({
           {loading && <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>}
           {error && !loading && <div className="empty-state error">{error}</div>}
           {noResults && <div className="empty-state">Heç bir qrup yoxdur</div>}
+      {isAdmin && !loading && onOpenSheets && (
+            <button className="process-item create-btn sheets-open-btn" onClick={onOpenSheets}>
+              <div className="num"><FileSpreadsheet size={20} /></div>
+              <div className="label">{t('home.open_sheets', 'Open Sheets table')}</div>
+            </button>
+          )}
       {isAdmin && !loading && (
             <button className="process-item create-btn" onClick={() => setGmodal({ type: 'create', parentId: null })}>
               <div className="num"><FolderPlus size={20} /></div>

@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import {
-  backfillFromProcesses,
+  SHEET_KINDS,
+  assertKind,
+  backfillFromIndex,
   createSheetRow,
   updateSheetRow,
   deleteSheetRow,
-  syncFromProcess,
+  syncFromItem,
   ALLOWED_STATUS
 } from '../services/sheetsStore.js';
 
@@ -15,18 +17,21 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// GET /api/sheets — list; empty store is backfilled once from diagrams
-router.get('/', async (req, res, next) => {
+// ---- kind-scoped routes: /api/sheets/:kind/... ----
+
+router.get('/:kind', async (req, res, next) => {
+  // Avoid treating legacy paths as kinds — only known kinds
+  if (!SHEET_KINDS[req.params.kind]) return next();
   try {
-    const sheets = await backfillFromProcesses(req.user);
-    res.json({ items: sheets.items || [] });
+    const sheets = await backfillFromIndex(req.params.kind, req.user);
+    res.json({ kind: req.params.kind, items: sheets.items || [] });
   } catch (e) { next(e); }
 });
 
-// POST /api/sheets — sheet-only row (does NOT create a process)
-router.post('/', requireAdmin, async (req, res, next) => {
+router.post('/:kind', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
   try {
-    const item = await createSheetRow({
+    const item = await createSheetRow(req.params.kind, {
       title: req.body?.title,
       subtitle: req.body?.subtitle,
       status: req.body?.status
@@ -35,8 +40,57 @@ router.post('/', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /api/sheets/sync-from-process — upsert by processId (or sheetId)
-// Registered before /:id so "sync-from-process" is never treated as an id.
+router.post('/:kind/sync', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
+  try {
+    const { itemId, processId, title, subtitle, status, sheetId } = req.body || {};
+    const id = itemId != null ? itemId : processId;
+    if (id == null) return res.status(400).json({ error: 'itemId teleb olunur' });
+    if (status != null && status !== '' && !ALLOWED_STATUS.includes(String(status))) {
+      return res.status(400).json({ error: 'Yanlış status' });
+    }
+    const row = await syncFromItem(req.params.kind, {
+      itemId: id, title, subtitle, status, sheetId
+    }, req.user);
+    res.json(row);
+  } catch (e) { next(e); }
+});
+
+router.put('/:kind/:id', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
+  try {
+    const row = await updateSheetRow(req.params.kind, req.params.id, req.body || {}, req.user);
+    res.json(row);
+  } catch (e) { next(e); }
+});
+
+router.delete('/:kind/:id', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
+  try {
+    res.json(await deleteSheetRow(req.params.kind, req.params.id, req.user));
+  } catch (e) { next(e); }
+});
+
+// ---- backward-compat: /api/sheets → diagrams ----
+
+router.get('/', async (req, res, next) => {
+  try {
+    const sheets = await backfillFromIndex('diagrams', req.user);
+    res.json({ kind: 'diagrams', items: sheets.items || [] });
+  } catch (e) { next(e); }
+});
+
+router.post('/', requireAdmin, async (req, res, next) => {
+  try {
+    const item = await createSheetRow('diagrams', {
+      title: req.body?.title,
+      subtitle: req.body?.subtitle,
+      status: req.body?.status
+    }, req.user);
+    res.status(201).json(item);
+  } catch (e) { next(e); }
+});
+
 router.post('/sync-from-process', requireAdmin, async (req, res, next) => {
   try {
     const { processId, title, subtitle, status, sheetId } = req.body || {};
@@ -44,23 +98,26 @@ router.post('/sync-from-process', requireAdmin, async (req, res, next) => {
     if (status != null && status !== '' && !ALLOWED_STATUS.includes(String(status))) {
       return res.status(400).json({ error: 'Yanlış status' });
     }
-    const row = await syncFromProcess({ processId, title, subtitle, status, sheetId }, req.user);
+    const row = await syncFromItem('diagrams', {
+      itemId: processId, title, subtitle, status, sheetId
+    }, req.user);
     res.json(row);
   } catch (e) { next(e); }
 });
 
-// PUT /api/sheets/:id — edit fields / link processId
 router.put('/:id', requireAdmin, async (req, res, next) => {
+  // numeric id only — skip if this was a kind name somehow
+  if (SHEET_KINDS[req.params.id]) return next();
   try {
-    const row = await updateSheetRow(req.params.id, req.body || {}, req.user);
+    const row = await updateSheetRow('diagrams', req.params.id, req.body || {}, req.user);
     res.json(row);
   } catch (e) { next(e); }
 });
 
-// DELETE /api/sheets/:id — remove sheet row only (process untouched)
 router.delete('/:id', requireAdmin, async (req, res, next) => {
+  if (SHEET_KINDS[req.params.id]) return next();
   try {
-    res.json(await deleteSheetRow(req.params.id, req.user));
+    res.json(await deleteSheetRow('diagrams', req.params.id, req.user));
   } catch (e) { next(e); }
 });
 

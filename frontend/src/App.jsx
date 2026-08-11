@@ -21,6 +21,7 @@ export default function App() {
   // scroll to and open the right folder for that item (fix 15). Not cleared
   // on backToDiagrams — only replaced the next time a diagram is opened.
   const [lastOpenedProcessId, setLastOpenedProcessId] = useState(null);
+  const [sheetsKind, setSheetsKind] = useState('diagrams'); // diagrams | pdfs | templates
   const [bootChecking, setBootChecking] = useState(true);
   // A diagram id parsed from a share link (?d=<id>&n=<nodeId>), pending until
   // the user is authenticated. Kept in a ref so it survives re-renders.
@@ -107,8 +108,15 @@ export default function App() {
     setView('diagrams');
   }
 
-  function openSheets() {
+  function openSheets(kind = 'diagrams') {
+    setSheetsKind(kind);
     setView('sheets');
+  }
+
+  function backFromSheets() {
+    if (sheetsKind === 'pdfs') setView('pdfs');
+    else if (sheetsKind === 'templates') setView('templates');
+    else setView('diagrams');
   }
 
   function backToHub() {
@@ -136,22 +144,41 @@ export default function App() {
           onOpen={openProcess}
           onLogout={onLogout}
           onBack={backToHub}
-          onOpenSheets={openSheets}
+          onOpenSheets={() => openSheets('diagrams')}
           focusProcessId={lastOpenedProcessId}
         />
       );
     }
 
     if (view === 'sheets') {
-      return <SheetsPage onBack={backToDiagrams} onLogout={onLogout} />;
+      return (
+        <SheetsPage
+          kind={sheetsKind}
+          withStatus={sheetsKind !== 'templates'}
+          onBack={backFromSheets}
+          onLogout={onLogout}
+        />
+      );
     }
 
     if (view === 'pdfs') {
-      return <PdfList onBack={backToHub} onLogout={onLogout} />;
+      return (
+        <PdfList
+          onBack={backToHub}
+          onLogout={onLogout}
+          onOpenSheets={() => openSheets('pdfs')}
+        />
+      );
     }
 
     if (view === 'templates') {
-      return <TemplateList onBack={backToHub} onLogout={onLogout} />;
+      return (
+        <TemplateList
+          onBack={backToHub}
+          onLogout={onLogout}
+          onOpenSheets={() => openSheets('templates')}
+        />
+      );
     }
 
     if (view === 'diagram') {

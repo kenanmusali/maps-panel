@@ -1,20 +1,63 @@
 /*
-  Diagram Sheets catalog — separate from İş Axışları groups/processes.
+  Per-section Sheets catalogs (Mongo via store.js — never GitHub).
 
-  Sheet-only rows (processId=null) are a raw checklist. Creating a diagram in
-  İş Axışları upserts a linked row (processId set). Adding here never creates
-  a process.
+  Kinds:
+    diagrams  → data/diagrams/sheets.json   (İş Axışları)
+    pdfs      → data/files/sheets.json      (Normativ Sənədlər)
+    templates → data/templates/sheets.json  (Şablonlar)
+
+  Sheet-only rows (itemId=null) are a raw checklist. Creating an item in the
+  matching section upserts a linked row. Adding here never creates the item.
 */
 
-import { getFile, putFile, attribution } from './store.js';
+import { getFile as mongoGet, putFile as mongoPut, attribution } from './store.js';
+import { getFile as githubGet } from './github.js';
 
 const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
-
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
-export const sheetsPath = () => `${dataPath()}/diagrams/sheets.json`;
-const indexPath = () => `${dataPath()}/diagrams/index.json`;
+
+export const SHEET_KINDS = {
+  diagrams: {
+    sheetsRel: 'diagrams/sheets.json',
+    indexRel: 'diagrams/index.json',
+    indexKey: 'processes',
+    indexVia: 'mongo',
+    label: 'diagrams'
+  },
+  pdfs: {
+    sheetsRel: 'files/sheets.json',
+    indexRel: 'files/index.json',
+    indexKey: 'pdfs',
+    indexVia: 'github',
+    label: 'pdfs'
+  },
+  templates: {
+    sheetsRel: 'templates/sheets.json',
+    indexRel: 'templates/index.json',
+    // templates index reuses the same shape as pdfs ({ groups, pdfs })
+    indexKey: 'pdfs',
+    indexVia: 'github',
+    label: 'templates'
+  }
+};
 
 export { ALLOWED_STATUS };
+
+export function assertKind(kind) {
+  if (!SHEET_KINDS[kind]) {
+    const err = new Error('Yanlış sheets kind');
+    err.status = 400;
+    throw err;
+  }
+  return SHEET_KINDS[kind];
+}
+
+function sheetsPath(kind) {
+  return `${dataPath()}/${assertKind(kind).sheetsRel}`;
+}
+function indexPath(kind) {
+  return `${dataPath()}/${assertKind(kind).indexRel}`;
+}
 
 function nextId(list) {
   const ids = (list || []).map(x => Number(x.id)).filter(Number.isFinite);
@@ -27,48 +70,73 @@ export function normalizeStatus(raw) {
   return ALLOWED_STATUS.includes(s) ? s : null;
 }
 
-export async function readSheets() {
-  const file = await getFile(sheetsPath());
+/** Normalize legacy processId → itemId */
+function normalizeRow(row) {
+  if (!row || typeof row !== 'object') return row;
+  const itemId = row.itemId != null
+    ? row.itemId
+    : (row.processId != null ? row.processId : null);
+  return { ...row, itemId, processId: itemId };
+}
+
+export async function readSheets(kind) {
+  assertKind(kind);
+  const file = await mongoGet(sheetsPath(kind));
   const c = file ? file.content : null;
-  return (c && Array.isArray(c.items)) ? { items: c.items } : { items: [] };
+  const items = (c && Array.isArray(c.items)) ? c.items.map(normalizeRow) : [];
+  return { items };
 }
 
-export async function writeSheets(content, message, user) {
-  return putFile(sheetsPath(), content, attribution(user, message));
+export async function writeSheets(kind, content, message, user) {
+  assertKind(kind);
+  return mongoPut(sheetsPath(kind), content, attribution(user, message));
 }
 
-/** One-time seed from diagrams index when sheets is empty. */
-export async function backfillFromProcesses(user) {
-  const sheets = await readSheets();
+async function readIndexFile(kind) {
+  const meta = assertKind(kind);
+  const p = indexPath(kind);
+  if (meta.indexVia === 'github') return githubGet(p);
+  return mongoGet(p);
+}
+
+/** One-time seed from the section index when sheets is empty. */
+export async function backfillFromIndex(kind, user) {
+  const meta = assertKind(kind);
+  const sheets = await readSheets(kind);
   if (sheets.items.length) return sheets;
 
-  const idxFile = await getFile(indexPath());
-  const processes = Array.isArray(idxFile?.content?.processes) ? idxFile.content.processes : [];
-  if (!processes.length) return sheets;
+  const idxFile = await readIndexFile(kind);
+  const list = Array.isArray(idxFile?.content?.[meta.indexKey])
+    ? idxFile.content[meta.indexKey]
+    : [];
+  if (!list.length) return sheets;
 
   const now = new Date().toISOString();
-  sheets.items = processes.map((p, i) => ({
-    id: i + 1,
-    title: String(p.title || ''),
-    subtitle: String(p.subtitle || ''),
-    status: normalizeStatus(p.status),
-    date: now,
-    processId: Number(p.id)
-  }));
-  await writeSheets(sheets, 'Backfill sheets from diagrams', user);
+  sheets.items = list.map((p, i) => {
+    const id = Number(p.id);
+    return {
+      id: i + 1,
+      title: String(p.title || ''),
+      subtitle: String(p.subtitle || ''),
+      status: normalizeStatus(p.status),
+      date: now,
+      itemId: id,
+      processId: id // legacy alias for diagrams clients
+    };
+  });
+  await writeSheets(kind, sheets, `Backfill ${kind} sheets from index`, user);
   return sheets;
 }
 
 /**
- * Upsert a sheet row from an İş Axışları process.
- * - If sheetId is given, link/update that row (used when picking from Sheets).
- * - Else find by processId and update, or insert a new linked row.
+ * Upsert a sheet row from a section item (diagram / pdf / template).
  */
-export async function syncFromProcess({ processId, title, subtitle, status, sheetId }, user) {
-  const pid = Number(processId);
-  if (!Number.isFinite(pid)) return null;
+export async function syncFromItem(kind, { itemId, title, subtitle, status, sheetId }, user) {
+  assertKind(kind);
+  const iid = Number(itemId);
+  if (!Number.isFinite(iid)) return null;
 
-  const sheets = await readSheets();
+  const sheets = await readSheets(kind);
   const now = new Date().toISOString();
   const st = status === undefined ? undefined : normalizeStatus(status);
 
@@ -77,7 +145,7 @@ export async function syncFromProcess({ processId, title, subtitle, status, shee
     row = sheets.items.find(x => Number(x.id) === Number(sheetId)) || null;
   }
   if (!row) {
-    row = sheets.items.find(x => Number(x.processId) === pid) || null;
+    row = sheets.items.find(x => Number(x.itemId ?? x.processId) === iid) || null;
   }
 
   if (row) {
@@ -87,9 +155,10 @@ export async function syncFromProcess({ processId, title, subtitle, status, shee
       if (st === null) delete row.status;
       else row.status = st;
     }
-    row.processId = pid;
-    await writeSheets(sheets, `Sync sheet ${row.id} from process ${pid}`, user);
-    return row;
+    row.itemId = iid;
+    row.processId = iid;
+    await writeSheets(kind, sheets, `Sync ${kind} sheet ${row.id} from item ${iid}`, user);
+    return normalizeRow(row);
   }
 
   const item = {
@@ -98,62 +167,80 @@ export async function syncFromProcess({ processId, title, subtitle, status, shee
     subtitle: typeof subtitle === 'string' ? subtitle : '',
     status: st === undefined ? null : st,
     date: now,
-    processId: pid
+    itemId: iid,
+    processId: iid
   };
   if (item.status == null) delete item.status;
   sheets.items = [...sheets.items, item];
-  await writeSheets(sheets, `Add sheet for process ${pid}`, user);
-  return item;
+  await writeSheets(kind, sheets, `Add ${kind} sheet for item ${iid}`, user);
+  return normalizeRow(item);
 }
 
-export async function createSheetRow({ title, subtitle, status }, user) {
-  const name = String(title || '').trim();
-  if (!name) {
-    const err = new Error('Diaqram adı teleb olunur');
-    err.status = 400;
-    throw err;
-  }
-  const sheets = await readSheets();
+/** @deprecated use syncFromItem('diagrams', …) */
+export async function syncFromProcess(opts, user) {
+  return syncFromItem('diagrams', {
+    itemId: opts.processId,
+    title: opts.title,
+    subtitle: opts.subtitle,
+    status: opts.status,
+    sheetId: opts.sheetId
+  }, user);
+}
+
+/** @deprecated use backfillFromIndex('diagrams', …) */
+export async function backfillFromProcesses(user) {
+  return backfillFromIndex('diagrams', user);
+}
+
+export async function createSheetRow(kind, { title, subtitle, status }, user) {
+  assertKind(kind);
+  // Empty title allowed — plus button must work even when fields are blank.
+  const name = title != null ? String(title).trim() : '';
+  const sheets = await readSheets(kind);
   const item = {
     id: nextId(sheets.items),
     title: name,
     subtitle: subtitle != null ? String(subtitle) : '',
     status: normalizeStatus(status),
     date: new Date().toISOString(),
+    itemId: null,
     processId: null
   };
   if (item.status == null) delete item.status;
   sheets.items = [...sheets.items, item];
-  await writeSheets(sheets, `Create sheet row ${item.id}`, user);
-  return item;
+  await writeSheets(kind, sheets, `Create ${kind} sheet row ${item.id}`, user);
+  return normalizeRow(item);
 }
 
-export async function updateSheetRow(id, patch, user) {
-  const sheets = await readSheets();
+export async function updateSheetRow(kind, id, patch, user) {
+  assertKind(kind);
+  const sheets = await readSheets(kind);
   const row = sheets.items.find(x => Number(x.id) === Number(id));
   if (!row) {
     const err = new Error('Sheet row not found');
     err.status = 404;
     throw err;
   }
-  if (typeof patch.title === 'string') row.title = patch.title.trim() || row.title;
+  if (typeof patch.title === 'string') row.title = patch.title; // allow empty
   if (typeof patch.subtitle === 'string') row.subtitle = patch.subtitle;
   if (patch.status !== undefined) {
     const st = normalizeStatus(patch.status);
     if (st === null) delete row.status;
     else row.status = st;
   }
-  if (patch.processId !== undefined) {
-    row.processId = patch.processId == null || patch.processId === ''
-      ? null
-      : Number(patch.processId);
+  if (patch.itemId !== undefined || patch.processId !== undefined) {
+    const raw = patch.itemId !== undefined ? patch.itemId : patch.processId;
+    const v = raw == null || raw === '' ? null : Number(raw);
+    row.itemId = v;
+    row.processId = v;
   }
-  await writeSheets(sheets, `Update sheet row ${id}`, user);
-  return row;
+  await writeSheets(kind, sheets, `Update ${kind} sheet row ${id}`, user);
+  return normalizeRow(row);
 }
 
-export async function deleteSheetRow(id, user) {
-  const sheets = await readSheets();
+export async function deleteSheetRow(kind, id, user) {
+  assertKind(kind);
+  const sheets = await readSheets(kind);
   const before = sheets.items.length;
   sheets.items = sheets.items.filter(x => Number(x.id) !== Number(id));
   if (sheets.items.length === before) {
@@ -161,6 +248,6 @@ export async function deleteSheetRow(id, user) {
     err.status = 404;
     throw err;
   }
-  await writeSheets(sheets, `Delete sheet row ${id}`, user);
+  await writeSheets(kind, sheets, `Delete ${kind} sheet row ${id}`, user);
   return { ok: true };
 }
