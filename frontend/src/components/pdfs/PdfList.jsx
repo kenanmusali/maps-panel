@@ -150,8 +150,7 @@ export default function PdfList({
       setSaveError('');
       try {
         const sheets = await api.listSheets(sheetsKind);
-        const unused = (sheets?.items || []).filter(r => (r.itemId ?? r.processId) == null);
-        setSheetOptions(unused);
+        setSheetOptions(sheets?.items || []);
       } catch {
         setSheetOptions([]);
       }

@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
-  LogOut, Loader2, Trash2, ChevronLeft, Plus, ChevronDown
+  LogOut, Loader2, Trash2, ChevronLeft, Plus
 } from './icons.jsx';
 import { FileSpreadsheet } from 'lucide-react';
 import { api } from '../api/client.js';
-import { pdfsApi } from '../api/pdfsClient.js';
-import { templatesApi } from '../api/templatesClient.js';
 import { StatusControl } from './Status.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
 
@@ -54,93 +52,6 @@ const KIND_META = {
   }
 };
 
-function StrukturField({ value, options, placeholder, disabled, onChange, onCommit }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const names = (options || []).map(g => String(g.name || '').trim()).filter(Boolean);
-
-  return (
-    <div className="sheets-struktur" ref={ref}>
-      <input
-        className="sheets-cell-input"
-        value={value || ''}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => {
-          // Delay so menu click can fire first
-          setTimeout(() => onCommit?.(e.target.value), 120);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            onCommit?.(value);
-            setOpen(false);
-          }
-        }}
-      />
-      {!disabled && (
-        <button
-          type="button"
-          className="sheets-struktur-chevron"
-          title="Qrup seç"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setOpen(o => !o)}
-        >
-          <ChevronDown size={15} />
-        </button>
-      )}
-      {open && (
-        <div className="sheets-struktur-menu">
-          {names.length === 0 ? (
-            <div className="sheets-struktur-empty">Qrup yoxdur</div>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="sheets-struktur-opt"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onChange('');
-                  onCommit?.('');
-                  setOpen(false);
-                }}
-              >
-                — (boş)
-              </button>
-              {names.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  className="sheets-struktur-opt"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onChange(name);
-                    onCommit?.(name);
-                    setOpen(false);
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function SheetsPage({
   kind = 'diagrams',
   onBack,
@@ -155,7 +66,6 @@ export default function SheetsPage({
 
   const [now, setNow] = useState(new Date());
   const [items, setItems] = useState([]);
-  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -171,30 +81,12 @@ export default function SheetsPage({
     return () => clearInterval(id);
   }, []);
 
-  async function loadGroups() {
-    try {
-      if (kind === 'pdfs') {
-        const data = await pdfsApi.list();
-        setGroups(data.groups || []);
-      } else if (kind === 'templates') {
-        const data = await templatesApi.list();
-        setGroups(data.groups || []);
-      } else {
-        const data = await api.listProcesses();
-        setGroups(data.groups || []);
-      }
-    } catch {
-      setGroups([]);
-    }
-  }
-
   async function load() {
     setLoading(true);
     setError('');
     try {
       const data = await api.listSheets(kind);
       setItems(Array.isArray(data?.items) ? data.items : []);
-      await loadGroups();
     } catch (e) {
       setError(e.message || 'Yüklənmədi');
     } finally {
@@ -259,6 +151,25 @@ export default function SheetsPage({
 
   const linked = (row) => row.itemId != null || row.processId != null;
 
+  function strukturInput(value, onChange, onCommit, placeholder, disabled) {
+    return (
+      <input
+        className="sheets-cell-input"
+        value={value || ''}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => onCommit?.(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onCommit?.(value);
+          }
+        }}
+      />
+    );
+  }
+
   const draftRow = isAdmin ? (
     <tr className="sheets-draft-row">
       <td className="col-n">
@@ -284,14 +195,13 @@ export default function SheetsPage({
         />
       </td>
       <td className="col-struktur">
-        <StrukturField
-          value={draftStruktur}
-          options={groups}
-          placeholder={tByText('Qrup adı…')}
-          disabled={busy}
-          onChange={setDraftStruktur}
-          onCommit={setDraftStruktur}
-        />
+        {strukturInput(
+          draftStruktur,
+          setDraftStruktur,
+          setDraftStruktur,
+          tByText('Qrup adı…'),
+          busy
+        )}
       </td>
       <td className="col-sub">
         <input
@@ -400,17 +310,16 @@ export default function SheetsPage({
                         </td>
                         <td className="col-struktur">
                           {isAdmin ? (
-                            <StrukturField
-                              value={row.strukturAdi || ''}
-                              options={groups}
-                              placeholder={tByText('Qrup adı…')}
-                              onChange={(v) => setItems(prev => prev.map(x =>
+                            strukturInput(
+                              row.strukturAdi || '',
+                              (v) => setItems(prev => prev.map(x =>
                                 Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
-                              ))}
-                              onCommit={(v) => {
+                              )),
+                              (v) => {
                                 if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
-                              }}
-                            />
+                              },
+                              tByText('Qrup adı…')
+                            )
                           ) : (
                             <span>{row.strukturAdi || '—'}</span>
                           )}

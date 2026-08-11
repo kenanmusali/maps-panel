@@ -71,26 +71,43 @@ export default function NameModal({
   const existingGroupNames = new Set(
     (groups || []).map(g => String(g.name || '').trim().toLowerCase()).filter(Boolean)
   );
-  // Chevron: this group's struktur rows + rows with empty struktur (shared pool).
-  // Never show rows tagged for a different group.
-  // For group create: prefer unused Struktur adı values (not already a group name).
-  const visibleSheets = Array.isArray(sheetOptions)
-    ? sheetOptions.filter((row) => {
-      const s = String(row.strukturAdi || '').trim();
-      if (sheetPickAs === 'group') {
-        // Show rows that can name a new group (prefer struktur; else title)
-        const candidate = s || String(row.title || '').trim();
-        if (!candidate) return false;
-        if (existingGroupNames.has(candidate.toLowerCase())) return false;
-        return true;
+
+  // Yeni qrup chevron: unique Struktur adı values from Sheets (not already a group).
+  // Yeni diaqram chevron: unused sheet rows for this group (+ empty struktur pool).
+  const visibleSheets = (() => {
+    if (!Array.isArray(sheetOptions)) return [];
+
+    if (sheetPickAs === 'group') {
+      const seen = new Set();
+      const out = [];
+      for (const row of sheetOptions) {
+        const s = String(row.strukturAdi || '').trim();
+        if (!s) continue;
+        const key = s.toLowerCase();
+        if (existingGroupNames.has(key) || seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          id: `struktur:${key}`,
+          strukturAdi: s,
+          title: row.title || '',
+          subtitle: row.subtitle || '',
+          status: row.status || null
+        });
       }
+      return out;
+    }
+
+    return sheetOptions.filter((row) => {
+      // Only unused sheet rows can be claimed by a new diagram/doc
+      if ((row.itemId ?? row.processId) != null) return false;
+      const s = String(row.strukturAdi || '').trim();
       if (!s) return true;
       if (!groupName) return true;
       return s.localeCompare(groupName, undefined, { sensitivity: 'accent' }) === 0
         || s.toLowerCase() === groupName.toLowerCase();
-    })
-    : [];
-  // Show chevron whenever sheetOptions was provided (even if empty — user sees it's wired)
+    });
+  })();
+  // Always show chevron when sheetOptions was provided (wired for Sheets pick)
   const showSheetChevron = Array.isArray(sheetOptions);
   const hasSheets = visibleSheets.length > 0;
 
@@ -108,7 +125,7 @@ export default function NameModal({
   function pickSheet(row) {
     const s = String(row.strukturAdi || '').trim();
     if (sheetPickAs === 'group') {
-      setName(s || row.title || '');
+      setName(s);
       setSheetId(null);
       setStatus(null);
       setSheetOpen(false);
@@ -118,7 +135,6 @@ export default function NameModal({
     setSubtitle(row.subtitle || '');
     setStatus(row.status || null);
     setSheetId(row.id);
-    // If sheet has a struktur that matches a group, select that group
     if (s && withGroup && groups.length) {
       const match = groups.find(g => String(g.name || '').trim().toLowerCase() === s.toLowerCase());
       if (match) setGroupId(match.id);
@@ -220,7 +236,6 @@ export default function NameModal({
                       )}
                       {visibleSheets.map(row => {
                         const st = row.status && STATUS_META[row.status];
-                        const groupLabel = String(row.strukturAdi || '').trim() || row.title || '—';
                         return (
                           <button
                             key={row.id}
@@ -229,12 +244,7 @@ export default function NameModal({
                             onClick={() => pickSheet(row)}
                           >
                             {sheetPickAs === 'group' ? (
-                              <>
-                                <span className="nm-sheet-option-title">{groupLabel}</span>
-                                {row.strukturAdi && row.title ? (
-                                  <span className="nm-sheet-option-sub">{row.title}</span>
-                                ) : null}
-                              </>
+                              <span className="nm-sheet-option-title">{row.strukturAdi}</span>
                             ) : (
                               <>
                                 <span className="nm-sheet-option-title">{row.title || '—'}</span>

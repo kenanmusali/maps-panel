@@ -167,11 +167,10 @@ export default function Home({ onOpen, onLogout, onBack, onOpenSheets, focusProc
       pristineProcessesRef.current = data.processes || [];
       setDirty(false);
       setSaveError('');
-      // Unused sheet rows for the Yeni diaqram picker (best-effort)
+      // All Sheets rows — group create uses Struktur adı; diaqram create uses unused rows
       try {
         const sheets = await api.listSheets('diagrams');
-        const unused = (sheets?.items || []).filter(r => (r.itemId ?? r.processId) == null);
-        setSheetOptions(unused);
+        setSheetOptions(sheets?.items || []);
       } catch {
         setSheetOptions([]);
       }
