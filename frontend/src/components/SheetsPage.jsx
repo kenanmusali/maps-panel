@@ -259,8 +259,76 @@ export default function SheetsPage({
 
   const linked = (row) => row.itemId != null || row.processId != null;
 
+  const draftRow = isAdmin ? (
+    <tr className="sheets-draft-row">
+      <td className="col-n">
+        <button
+          type="button"
+          className="sheets-plus-btn"
+          title="Əlavə et"
+          disabled={busy}
+          onClick={commitDraft}
+        >
+          {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
+        </button>
+      </td>
+      <td className="col-title">
+        <input
+          ref={draftTitleRef}
+          className="sheets-cell-input"
+          value={draftTitle}
+          placeholder={tByText(meta.namePh)}
+          onChange={(e) => setDraftTitle(e.target.value)}
+          onKeyDown={onDraftKey}
+          disabled={busy}
+        />
+      </td>
+      <td className="col-struktur">
+        <StrukturField
+          value={draftStruktur}
+          options={groups}
+          placeholder={tByText('Qrup adı…')}
+          disabled={busy}
+          onChange={setDraftStruktur}
+          onCommit={setDraftStruktur}
+        />
+      </td>
+      <td className="col-sub">
+        <input
+          className="sheets-cell-input"
+          value={draftSubtitle}
+          placeholder={tByText(meta.subPh)}
+          onChange={(e) => setDraftSubtitle(e.target.value)}
+          onKeyDown={onDraftKey}
+          disabled={busy}
+        />
+      </td>
+      {withStatus && (
+        <td className="col-status">
+          <StatusControl
+            value={draftStatus}
+            editable
+            onChange={setDraftStatus}
+          />
+        </td>
+      )}
+      <td className="col-date">—</td>
+      <td className="col-act">
+        <button
+          type="button"
+          className="icon-btn"
+          title="Əlavə et"
+          disabled={busy}
+          onClick={commitDraft}
+        >
+          {busy ? <Loader2 size={15} className="spin" /> : <FileSpreadsheet size={15} />}
+        </button>
+      </td>
+    </tr>
+  ) : null;
+
   return (
-    <>
+    <div className="sheets-page">
       <div className="topbar">
         <div className="top-left">
           <button className="pill-chip back-chip" onClick={onBack}>
@@ -276,12 +344,14 @@ export default function SheetsPage({
         </div>
       </div>
 
-      <div className="home-wrap sheets-wrap">
-        <LogoFull size="large" />
-        <h2 className="home-title">
-          {tByText(meta.title)}
-          <span className="sheets-sub">{tByText(meta.sub)}</span>
-        </h2>
+      <div className="sheets-wrap">
+        <div className="sheets-brand">
+          <LogoFull size="large" />
+          <h2 className="home-title sheets-title">
+            {tByText(meta.title)}
+            <span className="sheets-sub">{tByText(meta.sub)}</span>
+          </h2>
+        </div>
 
         <div className="sheets-table-wrap">
           {loading && (
@@ -292,179 +362,124 @@ export default function SheetsPage({
           )}
 
           {!loading && !error && (
-            <div className="sheets-table-scroll">
-            <table className="sheets-table">
-              <thead>
-                <tr>
-                  <th className="col-n">№</th>
-                  <th className="col-title">{tByText('Diaqram adı')}</th>
-                  <th className="col-struktur">{tByText('Struktur adı')}</th>
-                  <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
-                  {withStatus && <th className="col-status">{tByText('Status')}</th>}
-                  <th className="col-date">{tByText('Date')}</th>
-                  {isAdmin && <th className="col-act" aria-label="Actions" />}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row, i) => (
-                  <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
-                    <td className="col-n">{i + 1}</td>
-                    <td className="col-title">
-                      {isAdmin ? (
-                        <input
-                          className="sheets-cell-input"
-                          value={row.title || ''}
-                          onChange={(e) => setItems(prev => prev.map(x =>
-                            Number(x.id) === Number(row.id) ? { ...x, title: e.target.value } : x
-                          ))}
-                          onBlur={(e) => {
-                            if (e.target.value !== (row.title || '')) {
-                              patchRow(row.id, { title: e.target.value });
-                            }
-                          }}
-                        />
-                      ) : (
-                        <span>{row.title || '—'}</span>
-                      )}
-                    </td>
-                    <td className="col-struktur">
-                      {isAdmin ? (
-                        <StrukturField
-                          value={row.strukturAdi || ''}
-                          options={groups}
-                          placeholder={tByText('Qrup adı…')}
-                          onChange={(v) => setItems(prev => prev.map(x =>
-                            Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
-                          ))}
-                          onCommit={(v) => {
-                            if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
-                          }}
-                        />
-                      ) : (
-                        <span>{row.strukturAdi || '—'}</span>
-                      )}
-                    </td>
-                    <td className="col-sub">
-                      {isAdmin ? (
-                        <input
-                          className="sheets-cell-input"
-                          value={row.subtitle || ''}
-                          placeholder="—"
-                          onChange={(e) => setItems(prev => prev.map(x =>
-                            Number(x.id) === Number(row.id) ? { ...x, subtitle: e.target.value } : x
-                          ))}
-                          onBlur={(e) => {
-                            if (e.target.value !== (row.subtitle || '')) {
-                              patchRow(row.id, { subtitle: e.target.value });
-                            }
-                          }}
-                        />
-                      ) : (
-                        <span>{row.subtitle || '—'}</span>
-                      )}
-                    </td>
-                    {withStatus && (
-                      <td className="col-status">
-                        <StatusControl
-                          value={row.status}
-                          editable={isAdmin && !isViewer}
-                          onChange={(status) => patchRow(row.id, { status })}
-                        />
-                      </td>
+            <>
+              <div className="sheets-table-scroll">
+                <table className="sheets-table">
+                  <thead>
+                    <tr>
+                      <th className="col-n">№</th>
+                      <th className="col-title">{tByText('Diaqram adı')}</th>
+                      <th className="col-struktur">{tByText('Struktur adı')}</th>
+                      <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
+                      {withStatus && <th className="col-status">{tByText('Status')}</th>}
+                      <th className="col-date">{tByText('Date')}</th>
+                      {isAdmin && <th className="col-act" aria-label="Actions" />}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((row, i) => (
+                      <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
+                        <td className="col-n">{i + 1}</td>
+                        <td className="col-title">
+                          {isAdmin ? (
+                            <input
+                              className="sheets-cell-input"
+                              value={row.title || ''}
+                              onChange={(e) => setItems(prev => prev.map(x =>
+                                Number(x.id) === Number(row.id) ? { ...x, title: e.target.value } : x
+                              ))}
+                              onBlur={(e) => {
+                                if (e.target.value !== (row.title || '')) {
+                                  patchRow(row.id, { title: e.target.value });
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span>{row.title || '—'}</span>
+                          )}
+                        </td>
+                        <td className="col-struktur">
+                          {isAdmin ? (
+                            <StrukturField
+                              value={row.strukturAdi || ''}
+                              options={groups}
+                              placeholder={tByText('Qrup adı…')}
+                              onChange={(v) => setItems(prev => prev.map(x =>
+                                Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
+                              ))}
+                              onCommit={(v) => {
+                                if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
+                              }}
+                            />
+                          ) : (
+                            <span>{row.strukturAdi || '—'}</span>
+                          )}
+                        </td>
+                        <td className="col-sub">
+                          {isAdmin ? (
+                            <input
+                              className="sheets-cell-input"
+                              value={row.subtitle || ''}
+                              placeholder="—"
+                              onChange={(e) => setItems(prev => prev.map(x =>
+                                Number(x.id) === Number(row.id) ? { ...x, subtitle: e.target.value } : x
+                              ))}
+                              onBlur={(e) => {
+                                if (e.target.value !== (row.subtitle || '')) {
+                                  patchRow(row.id, { subtitle: e.target.value });
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span>{row.subtitle || '—'}</span>
+                          )}
+                        </td>
+                        {withStatus && (
+                          <td className="col-status">
+                            <StatusControl
+                              value={row.status}
+                              editable={isAdmin && !isViewer}
+                              onChange={(status) => patchRow(row.id, { status })}
+                            />
+                          </td>
+                        )}
+                        <td className="col-date">{fmtDate(row.date)}</td>
+                        {isAdmin && (
+                          <td className="col-act">
+                            <button
+                              type="button"
+                              className="icon-btn sheets-del"
+                              title="Sil"
+                              onClick={() => removeRow(row.id)}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {items.length === 0 && !isAdmin && (
+                      <tr>
+                        <td colSpan={withStatus ? 7 : 6} className="sheets-empty-cell">
+                          Sheets boşdur
+                        </td>
+                      </tr>
                     )}
-                    <td className="col-date">{fmtDate(row.date)}</td>
-                    {isAdmin && (
-                      <td className="col-act">
-                        <button
-                          type="button"
-                          className="icon-btn sheets-del"
-                          title="Sil"
-                          onClick={() => removeRow(row.id)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
+                  </tbody>
+                </table>
+              </div>
 
-                {isAdmin && (
-                  <tr className="sheets-draft-row">
-                    <td className="col-n">
-                      <button
-                        type="button"
-                        className="sheets-plus-btn"
-                        title="Əlavə et"
-                        disabled={busy}
-                        onClick={commitDraft}
-                      >
-                        {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
-                      </button>
-                    </td>
-                    <td className="col-title">
-                      <input
-                        ref={draftTitleRef}
-                        className="sheets-cell-input"
-                        value={draftTitle}
-                        placeholder={tByText(meta.namePh)}
-                        onChange={(e) => setDraftTitle(e.target.value)}
-                        onKeyDown={onDraftKey}
-                        disabled={busy}
-                      />
-                    </td>
-                    <td className="col-struktur">
-                      <StrukturField
-                        value={draftStruktur}
-                        options={groups}
-                        placeholder={tByText('Qrup adı…')}
-                        disabled={busy}
-                        onChange={setDraftStruktur}
-                        onCommit={setDraftStruktur}
-                      />
-                    </td>
-                    <td className="col-sub">
-                      <input
-                        className="sheets-cell-input"
-                        value={draftSubtitle}
-                        placeholder={tByText(meta.subPh)}
-                        onChange={(e) => setDraftSubtitle(e.target.value)}
-                        onKeyDown={onDraftKey}
-                        disabled={busy}
-                      />
-                    </td>
-                    {withStatus && (
-                      <td className="col-status">
-                        <StatusControl
-                          value={draftStatus}
-                          editable
-                          onChange={setDraftStatus}
-                        />
-                      </td>
-                    )}
-                    <td className="col-date">—</td>
-                    <td className="col-act">
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Əlavə et"
-                        disabled={busy}
-                        onClick={commitDraft}
-                      >
-                        {busy ? <Loader2 size={15} className="spin" /> : <FileSpreadsheet size={15} />}
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            </div>
-          )}
-
-          {!loading && !error && items.length === 0 && !isAdmin && (
-            <div className="empty-state">Sheets boşdur</div>
+              {isAdmin && (
+                <div className="sheets-draft-foot">
+                  <table className="sheets-table sheets-draft-table">
+                    <tbody>{draftRow}</tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
