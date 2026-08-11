@@ -1083,14 +1083,18 @@ details[open] summary::before { transform: rotate(90deg); }
   display: grid; place-items: center; padding: 24px; animation: fade-in 0.18s var(--ease);
 }
 .pdf-modal-card {
-  width: 100%; max-width: 460px; background: var(--surface); border-radius: var(--r-xl);
-  box-shadow: var(--sh-lg); border: 1px solid var(--border-soft); overflow: hidden; animation: pop-in 0.24s var(--ease);
+  width: 100%; max-width: 560px; background: var(--surface); border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg); border: 1px solid var(--border-soft); overflow: visible; animation: pop-in 0.24s var(--ease);
 }
-.pdf-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 22px; border-bottom: 1px solid var(--border-soft); }
+.pdf-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--border-soft);
+  border-radius: var(--r-xl) var(--r-xl) 0 0; background: var(--surface);
+}
 .pdf-modal-head h3 { font-size: 16px; color: var(--primary-darker); }
 .pdf-modal-close { width: 34px; height: 34px; display: grid; place-items: center; border-radius: var(--r-pill); color: var(--text-muted); background: var(--bg-soft); transition: all 0.15s; }
 .pdf-modal-close:hover { background: var(--border-soft); color: var(--text-primary); }
-.pdf-modal-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.pdf-modal-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; background: var(--surface); }
 .pdf-field { display: flex; flex-direction: column; gap: 7px; }
 .pdf-field label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .pdf-field input {
@@ -1101,7 +1105,11 @@ details[open] summary::before { transform: rotate(90deg); }
 .pdf-field input[type="file"] { padding: 9px; font-size: 12.5px; cursor: pointer; }
 .pdf-field-hint { font-size: 11.5px; color: var(--text-muted); }
 .pdf-modal-error { background: var(--danger-soft); color: var(--danger); border-radius: var(--r-xs); padding: 9px 12px; font-size: 12.5px; font-weight: 500; }
-.pdf-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 22px; border-top: 1px solid var(--border-soft); background: var(--surface-soft); }
+.pdf-modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 20px 24px 24px; border-top: 1px solid var(--border-soft);
+  background: var(--surface-soft); border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
 .pdf-modal-btn {
   display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; border-radius: var(--r-sm);
   font-size: 13px; font-weight: 600; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
@@ -2569,19 +2577,32 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 /* ============================================================
    DIAGRAM SHEETS TABLE
    ============================================================ */
-.sheets-wrap { max-width: 1100px; }
+.sheets-wrap {
+  max-width: 1280px;
+  width: 100%;
+  padding-bottom: 48px;
+}
 .sheets-sub {
   display: block; margin-top: 6px;
   font-size: 13px; font-weight: 500; color: var(--text-muted);
 }
 .sheets-table-wrap {
   width: 100%;
-  max-height: calc(100vh - 220px);
+  max-height: calc(100vh - 180px);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-md);
   box-shadow: var(--sh-xs);
+  /* Outer clips to radius; inner scrolls so draft/status aren't cut off */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sheets-table-scroll {
+  flex: 1 1 auto;
   overflow: auto;
+  padding-bottom: 18px;
+  -webkit-overflow-scrolling: touch;
 }
 .sheets-table {
   width: 100%;
@@ -2604,7 +2625,7 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   z-index: 2;
 }
 .sheets-table td {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-soft);
   vertical-align: middle;
   color: var(--text-primary);
@@ -2614,9 +2635,9 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
 .sheets-table .col-n { width: 48px; text-align: center; color: var(--text-muted); font-weight: 600; }
 .sheets-table .col-title { min-width: 200px; }
-.sheets-table .col-struktur { min-width: 160px; }
+.sheets-table .col-struktur { min-width: 180px; }
 .sheets-table .col-sub { min-width: 140px; }
-.sheets-table .col-status { width: 200px; min-width: 180px; }
+.sheets-table .col-status { width: 240px; min-width: 220px; }
 .sheets-table .col-date { width: 110px; color: var(--text-secondary); white-space: nowrap; }
 .sheets-table .col-act { width: 44px; text-align: center; }
 .sheets-table .col-status .status-control {
@@ -2626,23 +2647,55 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-table .col-status .status-control > .pill-chip,
 .sheets-table .col-status .status-control > button {
   width: 100%;
+  display: inline-flex !important;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
   box-sizing: border-box;
+  min-height: 38px;
+  padding: 8px 10px;
+  /* override default pill centering so text sits with icon on the left */
+  text-align: left;
+}
+.sheets-table .col-status .status-btn-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  text-align: left;
+}
+.sheets-table .col-status .status-btn-main > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.sheets-table .col-status .status-btn-chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  opacity: 0.7;
 }
 .sheets-table .col-status .status-badge {
   display: inline-flex;
   width: 100%;
   justify-content: flex-start;
+  gap: 8px;
   box-sizing: border-box;
+  min-height: 38px;
+  padding: 8px 10px;
 }
 .sheets-cell-input {
   width: 100%;
   border: 1px solid transparent;
   background: transparent;
   border-radius: var(--r-xs);
-  padding: 6px 8px;
+  padding: 8px 10px;
   font: inherit;
   color: inherit;
+  min-height: 36px;
+  box-sizing: border-box;
 }
 .sheets-cell-input:hover { border-color: var(--border-soft); background: var(--surface); }
 .sheets-cell-input:focus {
@@ -2651,20 +2704,84 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   background: var(--surface);
   box-shadow: var(--ring);
 }
+.sheets-struktur {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  width: 100%;
+}
+.sheets-struktur input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  flex: 1;
+  min-width: 0;
+}
+.sheets-struktur-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  border: 1px solid transparent;
+  border-left: none;
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sheets-struktur:hover .sheets-struktur-chevron,
+.sheets-struktur:focus-within .sheets-struktur-chevron {
+  border-color: var(--border-soft);
+  background: var(--bg-soft);
+}
+.sheets-struktur:focus-within input {
+  border-color: var(--primary);
+}
+.sheets-struktur:focus-within .sheets-struktur-chevron {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.sheets-struktur-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  max-height: 200px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  box-shadow: var(--sh-md);
+}
+.sheets-struktur-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-soft);
+}
+.sheets-struktur-opt:last-child { border-bottom: none; }
+.sheets-struktur-opt:hover { background: var(--primary-soft); }
 .sheets-draft-row td {
   background: color-mix(in srgb, var(--primary-soft) 25%, var(--surface));
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  box-shadow: 0 -1px 0 var(--border-soft);
+  /* not sticky — sticky+overflow was clipping the bottom of inputs/status */
+  box-shadow: inset 0 1px 0 var(--border-soft);
+  padding-top: 14px;
+  padding-bottom: 16px;
 }
 .sheets-draft-row .col-n { color: var(--primary); }
 .sheets-plus-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--r-xs);
   border: 1px dashed var(--primary-light);
   color: var(--primary);
@@ -2675,6 +2792,39 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-plus-btn:disabled { opacity: 0.5; cursor: default; }
 .sheets-del:hover { color: var(--danger); }
 .create-btn.sheets-open-btn .num { color: var(--primary); }
+
+/* Status control: icon+text left, chevron right (global + sheets) */
+.status-btn-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: left;
+}
+.status-control > .pill-chip.edit-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 160px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.status-btn-chevron { flex-shrink: 0; margin-left: auto; }
+
+.pdf-modal-card {
+  width: 100%; max-width: 560px; background: var(--surface); border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg); border: 1px solid var(--border-soft); overflow: visible; animation: pop-in 0.24s var(--ease);
+}
+.pdf-modal-foot {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
 
 /* NameModal — Sheets picker next to diagram name */
 .nm-name-row {
@@ -2748,3 +2898,14 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .nm-sheet-option-status.progress { color: var(--warning, #b7791f); }
 .nm-sheet-option-status.sign { color: var(--primary); }
 .nm-sheet-option-status.notdone { color: var(--danger); }
+.nm-sheet-empty {
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.sheets-struktur-empty {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}

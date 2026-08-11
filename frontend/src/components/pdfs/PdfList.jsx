@@ -59,6 +59,7 @@ export default function PdfList({
   pageTitleKey = 'pdf_page_title',
   pageTitleDefault = 'Normativ Sənədlər',
   withStatus = true,
+  sheetsKind = 'pdfs',
 }) {
   const { t, tByText, rawByText, LabelPen } = useLabels();
   const [now, setNow] = useState(new Date());
@@ -76,6 +77,7 @@ export default function PdfList({
   const [gmodal, setGmodal] = useState(null); // group modal: {type:'create'|'rename', group?, parentId?}
   const [settings, setSettings] = useState(null);
   const [pendingArchive, setPendingArchive] = useState(null); // pdf id awaiting confirm
+  const [sheetOptions, setSheetOptions] = useState([]);
   const searchInputRef = useRef(null);
 
   // ---- staged (unsaved) folder edits ----
@@ -146,6 +148,13 @@ export default function PdfList({
       pristinePdfsRef.current = list;
       setDirty(false);
       setSaveError('');
+      try {
+        const sheets = await api.listSheets(sheetsKind);
+        const unused = (sheets?.items || []).filter(r => (r.itemId ?? r.processId) == null);
+        setSheetOptions(unused);
+      } catch {
+        setSheetOptions([]);
+      }
     } catch (e) {
       setError(e.message);
       if (e.status === 401) onLogout();
@@ -893,7 +902,8 @@ export default function PdfList({
       )}
       {gmodal?.type === 'create' && (
         <NameModal heading={gmodal.parentId ? 'Yeni alt qrup' : 'Yeni qrup'} nameLabel="Qrup adı" namePlaceholder="Qrupun adı"
-          saveLabel="Yarat" onClose={() => setGmodal(null)} onSave={saveGroupCreate} />
+          saveLabel="Yarat" sheetOptions={sheetOptions} sheetPickAs="group" groups={groups}
+          onClose={() => setGmodal(null)} onSave={saveGroupCreate} />
       )}
       {gmodal?.type === 'rename' && (
         <NameModal heading="Qrupu adlandır" nameLabel="Qrup adı" name0={gmodal.group.name}

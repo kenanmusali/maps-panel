@@ -66,12 +66,13 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
       <button
         type="button"
         className={`pill-chip edit-chip ${meta ? meta.cls : 'none'}`}
-        
         onClick={() => setOpen(o => !o)}
       >
-        {meta ? <meta.Icon size={size} /> : <Clock size={size} />}
-        <span>{meta ? metaLabel : t('status.placeholder', 'Status')}</span>
-        <ChevronDown size={13} />
+        <span className="status-btn-main">
+          {meta ? <meta.Icon size={size} /> : <Clock size={size} />}
+          <span>{meta ? metaLabel : t('status.placeholder', 'Status')}</span>
+        </span>
+        <ChevronDown size={13} className="status-btn-chevron" />
       </button>
       {open && (
         <div className="status-menu">

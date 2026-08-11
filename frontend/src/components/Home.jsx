@@ -1082,7 +1082,8 @@ export default function Home({ onOpen, onLogout, onBack, onOpenSheets, focusProc
 
       {modal?.type === 'group-create' && (
         <NameModal heading={modal.parentId ? 'Yeni alt qrup' : 'Yeni qrup'} nameLabel="Qrup adı" namePlaceholder="Qrupun adı"
-          saveLabel="Yarat" onClose={() => setModal(null)} onSave={saveGroupCreate} />
+          saveLabel="Yarat" sheetOptions={sheetOptions} sheetPickAs="group" groups={groups}
+          onClose={() => setModal(null)} onSave={saveGroupCreate} />
       )}
       {modal?.type === 'group-rename' && (
         <NameModal heading="Qrupu adlandır" nameLabel="Qrup adı" name0={modal.group.name}

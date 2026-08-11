@@ -11,6 +11,7 @@ export default function TemplateList(props) {
       pageTitleKey="tmpl_page_title"
       pageTitleDefault="Şablonlar"
       withStatus={false}
+      sheetsKind="templates"
     />
   );
 }

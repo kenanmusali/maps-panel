@@ -28,6 +28,9 @@ function orderedGroupOptions(groups) {
 // Optional Excel import: pass withImport + onImport(file, { groupId }) (async) and
 // optionally onTemplate() to offer a template download.
 // Optional sheetOptions: unused Sheets rows — chevron picks one to fill name/subtitle/status.
+// sheetPickAs:
+//   'item'  (default) → fill diagram/doc name + subtitle + status
+//   'group' → fill group name from Struktur adı (fallback: title)
 export default function NameModal({
   heading,
   nameLabel = 'Ad',
@@ -46,6 +49,7 @@ export default function NameModal({
   onImportJson,
   onTemplate,
   sheetOptions = null,
+  sheetPickAs = 'item',
   onClose,
   onSave
 }) {
@@ -64,17 +68,30 @@ export default function NameModal({
   const sheetMenuRef = useRef(null);
 
   const groupName = (groups.find(g => Number(g.id) === Number(groupId))?.name || '').trim();
+  const existingGroupNames = new Set(
+    (groups || []).map(g => String(g.name || '').trim().toLowerCase()).filter(Boolean)
+  );
   // Chevron: this group's struktur rows + rows with empty struktur (shared pool).
   // Never show rows tagged for a different group.
+  // For group create: prefer unused Struktur adı values (not already a group name).
   const visibleSheets = Array.isArray(sheetOptions)
     ? sheetOptions.filter((row) => {
       const s = String(row.strukturAdi || '').trim();
+      if (sheetPickAs === 'group') {
+        // Show rows that can name a new group (prefer struktur; else title)
+        const candidate = s || String(row.title || '').trim();
+        if (!candidate) return false;
+        if (existingGroupNames.has(candidate.toLowerCase())) return false;
+        return true;
+      }
       if (!s) return true;
       if (!groupName) return true;
       return s.localeCompare(groupName, undefined, { sensitivity: 'accent' }) === 0
         || s.toLowerCase() === groupName.toLowerCase();
     })
     : [];
+  // Show chevron whenever sheetOptions was provided (even if empty — user sees it's wired)
+  const showSheetChevron = Array.isArray(sheetOptions);
   const hasSheets = visibleSheets.length > 0;
 
   useEffect(() => {
@@ -89,12 +106,19 @@ export default function NameModal({
   }, [sheetOpen]);
 
   function pickSheet(row) {
+    const s = String(row.strukturAdi || '').trim();
+    if (sheetPickAs === 'group') {
+      setName(s || row.title || '');
+      setSheetId(null);
+      setStatus(null);
+      setSheetOpen(false);
+      return;
+    }
     setName(row.title || '');
     setSubtitle(row.subtitle || '');
     setStatus(row.status || null);
     setSheetId(row.id);
     // If sheet has a struktur that matches a group, select that group
-    const s = String(row.strukturAdi || '').trim();
     if (s && withGroup && groups.length) {
       const match = groups.find(g => String(g.name || '').trim().toLowerCase() === s.toLowerCase());
       if (match) setGroupId(match.id);
@@ -167,7 +191,7 @@ export default function NameModal({
         <div className="pdf-modal-body">
           <div className="pdf-field">
             <label>{tByText(nameLabel)}</label>
-            <div className={`nm-name-row ${hasSheets ? 'with-sheet' : ''}`} ref={sheetMenuRef}>
+            <div className={`nm-name-row ${showSheetChevron ? 'with-sheet' : ''}`} ref={sheetMenuRef}>
               <input
                 type="text"
                 value={name}
@@ -175,12 +199,12 @@ export default function NameModal({
                 placeholder={namePlaceholder}
                 autoFocus
               />
-              {hasSheets && (
+              {showSheetChevron && (
                 <>
                   <button
                     type="button"
                     className="nm-sheet-chevron"
-                    title={tByText('Sheets-dən seç')}
+                    title={tByText(sheetPickAs === 'group' ? 'Struktur adından seç' : 'Sheets-dən seç')}
                     onClick={() => setSheetOpen(o => !o)}
                     aria-expanded={sheetOpen}
                   >
@@ -188,9 +212,15 @@ export default function NameModal({
                   </button>
                   {sheetOpen && (
                     <div className="nm-sheet-menu">
-                      <div className="nm-sheet-menu-head">{tByText('Sheets-dən seç')}</div>
+                      <div className="nm-sheet-menu-head">
+                        {tByText(sheetPickAs === 'group' ? 'Struktur adından seç' : 'Sheets-dən seç')}
+                      </div>
+                      {!hasSheets && (
+                        <div className="nm-sheet-empty">{tByText('Sheets-də seçilə bilən sətir yoxdur')}</div>
+                      )}
                       {visibleSheets.map(row => {
                         const st = row.status && STATUS_META[row.status];
+                        const groupLabel = String(row.strukturAdi || '').trim() || row.title || '—';
                         return (
                           <button
                             key={row.id}
@@ -198,20 +228,31 @@ export default function NameModal({
                             className="nm-sheet-option"
                             onClick={() => pickSheet(row)}
                           >
-                            <span className="nm-sheet-option-title">{row.title || '—'}</span>
-                            {row.strukturAdi ? (
-                              <span className="nm-sheet-option-sub">{row.strukturAdi}</span>
+                            {sheetPickAs === 'group' ? (
+                              <>
+                                <span className="nm-sheet-option-title">{groupLabel}</span>
+                                {row.strukturAdi && row.title ? (
+                                  <span className="nm-sheet-option-sub">{row.title}</span>
+                                ) : null}
+                              </>
                             ) : (
-                              <span className="nm-sheet-option-sub">{tByText('Ümumi (struktur boş)')}</span>
+                              <>
+                                <span className="nm-sheet-option-title">{row.title || '—'}</span>
+                                {row.strukturAdi ? (
+                                  <span className="nm-sheet-option-sub">{row.strukturAdi}</span>
+                                ) : (
+                                  <span className="nm-sheet-option-sub">{tByText('Ümumi (struktur boş)')}</span>
+                                )}
+                                {row.subtitle ? (
+                                  <span className="nm-sheet-option-sub">{row.subtitle}</span>
+                                ) : null}
+                                {st ? (
+                                  <span className={`nm-sheet-option-status ${st.cls}`}>
+                                    {t(st.id, st.default)}
+                                  </span>
+                                ) : null}
+                              </>
                             )}
-                            {row.subtitle ? (
-                              <span className="nm-sheet-option-sub">{row.subtitle}</span>
-                            ) : null}
-                            {st ? (
-                              <span className={`nm-sheet-option-status ${st.cls}`}>
-                                {t(st.id, st.default)}
-                              </span>
-                            ) : null}
                           </button>
                         );
                       })}
