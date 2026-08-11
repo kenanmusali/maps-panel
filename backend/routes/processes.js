@@ -284,12 +284,13 @@ router.put('/:id/status', async (req, res, next) => {
     if (!entry) return res.status(404).json({ error: 'Process not found' });
     if (status === null) delete entry.status; else entry.status = status;
     await writeIndex(idx, `Set status for process ${id}`, req.user);
-    // Keep Sheets catalog in sync (best-effort — diagram write already succeeded)
+    const gName = idx.groups.find(g => Number(g.id) === Number(entry.groupId))?.name || '';
     await syncFromProcess({
       processId: id,
       title: entry.title,
       subtitle: entry.subtitle || '',
-      status
+      status,
+      strukturAdi: gName
     }, req.user).catch((e) => console.error('[sheets sync status]', e.message));
     res.json({ id, status });
   } catch (e) { next(e); }
@@ -311,6 +312,7 @@ router.post('/', async (req, res, next) => {
     if (status !== null && !ALLOWED_STATUS.includes(status)) {
       return res.status(400).json({ error: 'Yanlış status' });
     }
+    const gName = idx.groups.find(g => Number(g.id) === groupId)?.name || '';
 
     const process = {
       id: newId, title, subtitle,
@@ -326,13 +328,13 @@ router.post('/', async (req, res, next) => {
     if (status) indexEntry.status = status;
     idx.processes = [...idx.processes, indexEntry];
     await writeIndex(idx, `Add process ${newId} to index`, req.user);
-    // One-way: İş Axışları create → Sheets upsert (links sheetId when picked)
     await syncFromProcess({
       processId: newId,
       title,
       subtitle,
       status,
-      sheetId: Number.isFinite(sheetId) ? sheetId : undefined
+      sheetId: Number.isFinite(sheetId) ? sheetId : undefined,
+      strukturAdi: gName
     }, req.user).catch((e) => console.error('[sheets sync create]', e.message));
     res.status(201).json({ ...process, status: status || null });
   } catch (e) { next(e); }
@@ -362,7 +364,8 @@ router.put('/:id/meta', async (req, res, next) => {
       processId: id,
       title: entry.title,
       subtitle: entry.subtitle || '',
-      status: entry.status ?? null
+      status: entry.status ?? null,
+      strukturAdi: idx.groups.find(g => Number(g.id) === Number(entry.groupId))?.name || ''
     }, req.user).catch((e) => console.error('[sheets sync meta]', e.message));
     res.json(entry);
   } catch (e) { next(e); }
@@ -394,7 +397,8 @@ router.put('/:id', async (req, res, next) => {
           processId: Number(id),
           title: idx.processes[i].title,
           subtitle: idx.processes[i].subtitle || '',
-          status: idx.processes[i].status ?? null
+          status: idx.processes[i].status ?? null,
+          strukturAdi: idx.groups.find(g => Number(g.id) === Number(idx.processes[i].groupId))?.name || ''
         }, req.user).catch((e) => console.error('[sheets sync put]', e.message));
       }
     }

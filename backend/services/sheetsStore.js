@@ -102,36 +102,60 @@ async function readIndexFile(kind) {
 /** One-time seed from the section index when sheets is empty. */
 export async function backfillFromIndex(kind, user) {
   const meta = assertKind(kind);
-  const sheets = await readSheets(kind);
-  if (sheets.items.length) return sheets;
+  let sheets = await readSheets(kind);
 
   const idxFile = await readIndexFile(kind);
-  const list = Array.isArray(idxFile?.content?.[meta.indexKey])
-    ? idxFile.content[meta.indexKey]
-    : [];
-  if (!list.length) return sheets;
+  const content = idxFile?.content || {};
+  const list = Array.isArray(content[meta.indexKey]) ? content[meta.indexKey] : [];
+  const groups = Array.isArray(content.groups) ? content.groups : [];
 
-  const now = new Date().toISOString();
-  sheets.items = list.map((p, i) => {
-    const id = Number(p.id);
-    return {
-      id: i + 1,
-      title: String(p.title || ''),
-      subtitle: String(p.subtitle || ''),
-      status: normalizeStatus(p.status),
-      date: now,
-      itemId: id,
-      processId: id // legacy alias for diagrams clients
-    };
-  });
-  await writeSheets(kind, sheets, `Backfill ${kind} sheets from index`, user);
+  function strukturFor(entry) {
+    const g = groups.find(x => Number(x.id) === Number(entry?.groupId));
+    return g?.name ? String(g.name) : '';
+  }
+
+  if (!sheets.items.length && list.length) {
+    const now = new Date().toISOString();
+    sheets.items = list.map((p, i) => {
+      const id = Number(p.id);
+      return {
+        id: i + 1,
+        title: String(p.title || ''),
+        subtitle: String(p.subtitle || ''),
+        strukturAdi: strukturFor(p),
+        status: normalizeStatus(p.status),
+        date: now,
+        itemId: id,
+        processId: id
+      };
+    });
+    await writeSheets(kind, sheets, `Backfill ${kind} sheets from index`, user);
+    return sheets;
+  }
+
+  // Repair: fill missing strukturAdi from group name for linked rows
+  let changed = false;
+  for (const row of sheets.items) {
+    if ((row.strukturAdi || '').trim()) continue;
+    const iid = row.itemId ?? row.processId;
+    if (iid == null) continue;
+    const entry = list.find(p => Number(p.id) === Number(iid));
+    const name = strukturFor(entry || {});
+    if (name) {
+      row.strukturAdi = name;
+      changed = true;
+    }
+  }
+  if (changed) {
+    await writeSheets(kind, sheets, `Fill strukturAdi on ${kind} sheets`, user);
+  }
   return sheets;
 }
 
 /**
  * Upsert a sheet row from a section item (diagram / pdf / template).
  */
-export async function syncFromItem(kind, { itemId, title, subtitle, status, sheetId }, user) {
+export async function syncFromItem(kind, { itemId, title, subtitle, status, sheetId, strukturAdi }, user) {
   assertKind(kind);
   const iid = Number(itemId);
   if (!Number.isFinite(iid)) return null;
@@ -139,6 +163,7 @@ export async function syncFromItem(kind, { itemId, title, subtitle, status, shee
   const sheets = await readSheets(kind);
   const now = new Date().toISOString();
   const st = status === undefined ? undefined : normalizeStatus(status);
+  const struktur = strukturAdi != null ? String(strukturAdi) : undefined;
 
   let row = null;
   if (sheetId != null && Number.isFinite(Number(sheetId))) {
@@ -155,6 +180,10 @@ export async function syncFromItem(kind, { itemId, title, subtitle, status, shee
       if (st === null) delete row.status;
       else row.status = st;
     }
+    // Keep existing custom struktur; only fill when blank
+    if (struktur !== undefined && !(row.strukturAdi || '').trim()) {
+      row.strukturAdi = struktur;
+    }
     row.itemId = iid;
     row.processId = iid;
     await writeSheets(kind, sheets, `Sync ${kind} sheet ${row.id} from item ${iid}`, user);
@@ -165,6 +194,7 @@ export async function syncFromItem(kind, { itemId, title, subtitle, status, shee
     id: nextId(sheets.items),
     title: typeof title === 'string' ? title : '',
     subtitle: typeof subtitle === 'string' ? subtitle : '',
+    strukturAdi: struktur || '',
     status: st === undefined ? null : st,
     date: now,
     itemId: iid,
@@ -183,7 +213,8 @@ export async function syncFromProcess(opts, user) {
     title: opts.title,
     subtitle: opts.subtitle,
     status: opts.status,
-    sheetId: opts.sheetId
+    sheetId: opts.sheetId,
+    strukturAdi: opts.strukturAdi
   }, user);
 }
 
@@ -192,7 +223,7 @@ export async function backfillFromProcesses(user) {
   return backfillFromIndex('diagrams', user);
 }
 
-export async function createSheetRow(kind, { title, subtitle, status }, user) {
+export async function createSheetRow(kind, { title, subtitle, status, strukturAdi }, user) {
   assertKind(kind);
   // Empty title allowed — plus button must work even when fields are blank.
   const name = title != null ? String(title).trim() : '';
@@ -201,6 +232,7 @@ export async function createSheetRow(kind, { title, subtitle, status }, user) {
     id: nextId(sheets.items),
     title: name,
     subtitle: subtitle != null ? String(subtitle) : '',
+    strukturAdi: strukturAdi != null ? String(strukturAdi).trim() : '',
     status: normalizeStatus(status),
     date: new Date().toISOString(),
     itemId: null,
@@ -223,6 +255,7 @@ export async function updateSheetRow(kind, id, patch, user) {
   }
   if (typeof patch.title === 'string') row.title = patch.title; // allow empty
   if (typeof patch.subtitle === 'string') row.subtitle = patch.subtitle;
+  if (typeof patch.strukturAdi === 'string') row.strukturAdi = patch.strukturAdi;
   if (patch.status !== undefined) {
     const st = normalizeStatus(patch.status);
     if (st === null) delete row.status;

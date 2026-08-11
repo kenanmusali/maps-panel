@@ -2613,8 +2613,9 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-table tr.sheet-only { background: transparent; }
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
 .sheets-table .col-n { width: 48px; text-align: center; color: var(--text-muted); font-weight: 600; }
-.sheets-table .col-title { min-width: 220px; }
-.sheets-table .col-sub { min-width: 160px; }
+.sheets-table .col-title { min-width: 200px; }
+.sheets-table .col-struktur { min-width: 160px; }
+.sheets-table .col-sub { min-width: 140px; }
 .sheets-table .col-status { width: 200px; min-width: 180px; }
 .sheets-table .col-date { width: 110px; color: var(--text-secondary); white-space: nowrap; }
 .sheets-table .col-act { width: 44px; text-align: center; }

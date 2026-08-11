@@ -34,7 +34,8 @@ router.post('/:kind', requireAdmin, async (req, res, next) => {
     const item = await createSheetRow(req.params.kind, {
       title: req.body?.title,
       subtitle: req.body?.subtitle,
-      status: req.body?.status
+      status: req.body?.status,
+      strukturAdi: req.body?.strukturAdi
     }, req.user);
     res.status(201).json(item);
   } catch (e) { next(e); }
@@ -43,14 +44,14 @@ router.post('/:kind', requireAdmin, async (req, res, next) => {
 router.post('/:kind/sync', requireAdmin, async (req, res, next) => {
   if (!SHEET_KINDS[req.params.kind]) return next();
   try {
-    const { itemId, processId, title, subtitle, status, sheetId } = req.body || {};
+    const { itemId, processId, title, subtitle, status, sheetId, strukturAdi } = req.body || {};
     const id = itemId != null ? itemId : processId;
     if (id == null) return res.status(400).json({ error: 'itemId teleb olunur' });
     if (status != null && status !== '' && !ALLOWED_STATUS.includes(String(status))) {
       return res.status(400).json({ error: 'Yanlış status' });
     }
     const row = await syncFromItem(req.params.kind, {
-      itemId: id, title, subtitle, status, sheetId
+      itemId: id, title, subtitle, status, sheetId, strukturAdi
     }, req.user);
     res.json(row);
   } catch (e) { next(e); }
@@ -85,7 +86,8 @@ router.post('/', requireAdmin, async (req, res, next) => {
     const item = await createSheetRow('diagrams', {
       title: req.body?.title,
       subtitle: req.body?.subtitle,
-      status: req.body?.status
+      status: req.body?.status,
+      strukturAdi: req.body?.strukturAdi
     }, req.user);
     res.status(201).json(item);
   } catch (e) { next(e); }

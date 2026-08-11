@@ -71,6 +71,7 @@ export default function SheetsPage({
   const [busy, setBusy] = useState(false);
 
   const [draftTitle, setDraftTitle] = useState('');
+  const [draftStruktur, setDraftStruktur] = useState('');
   const [draftSubtitle, setDraftSubtitle] = useState('');
   const [draftStatus, setDraftStatus] = useState(null);
   const draftTitleRef = useRef(null);
@@ -102,10 +103,12 @@ export default function SheetsPage({
       const row = await api.createSheet(kind, {
         title: draftTitle.trim(),
         subtitle: draftSubtitle.trim(),
+        strukturAdi: draftStruktur.trim(),
         status: withStatus ? draftStatus : null
       });
       setItems(prev => [...prev, row]);
       setDraftTitle('');
+      setDraftStruktur('');
       setDraftSubtitle('');
       setDraftStatus(null);
       requestAnimationFrame(() => draftTitleRef.current?.focus());
@@ -185,8 +188,9 @@ export default function SheetsPage({
             <table className="sheets-table">
               <thead>
                 <tr>
-                  <th className="col-n">N</th>
+                  <th className="col-n">№</th>
                   <th className="col-title">{tByText('Diaqram adı')}</th>
+                  <th className="col-struktur">{tByText('Struktur adı')}</th>
                   <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
                   {withStatus && <th className="col-status">{tByText('Status')}</th>}
                   <th className="col-date">{tByText('Date')}</th>
@@ -213,6 +217,25 @@ export default function SheetsPage({
                         />
                       ) : (
                         <span>{row.title || '—'}</span>
+                      )}
+                    </td>
+                    <td className="col-struktur">
+                      {isAdmin ? (
+                        <input
+                          className="sheets-cell-input"
+                          value={row.strukturAdi || ''}
+                          placeholder={tByText('Qrup adı…')}
+                          onChange={(e) => setItems(prev => prev.map(x =>
+                            Number(x.id) === Number(row.id) ? { ...x, strukturAdi: e.target.value } : x
+                          ))}
+                          onBlur={(e) => {
+                            if (e.target.value !== (row.strukturAdi || '')) {
+                              patchRow(row.id, { strukturAdi: e.target.value });
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span>{row.strukturAdi || '—'}</span>
                       )}
                     </td>
                     <td className="col-sub">
@@ -279,6 +302,16 @@ export default function SheetsPage({
                         value={draftTitle}
                         placeholder={tByText(meta.namePh)}
                         onChange={(e) => setDraftTitle(e.target.value)}
+                        onKeyDown={onDraftKey}
+                        disabled={busy}
+                      />
+                    </td>
+                    <td className="col-struktur">
+                      <input
+                        className="sheets-cell-input"
+                        value={draftStruktur}
+                        placeholder={tByText('Qrup adı…')}
+                        onChange={(e) => setDraftStruktur(e.target.value)}
                         onKeyDown={onDraftKey}
                         disabled={busy}
                       />
