@@ -60,7 +60,7 @@ function requireAdmin(req, res, next) {
 }
 
 /* =========================== GROUPS =========================== */
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const file = await getFile(indexPath());
     const { idx, changed } = ensureGroups(file ? file.content : null);

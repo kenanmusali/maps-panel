@@ -6,14 +6,15 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Optional: proxy /api to backend so you can use relative URLs in dev.
-      // Frontend code uses VITE_API_URL — if you leave VITE_API_URL empty,
-      // requests go to /api/* and Vite forwards them here.
+      // Keep VITE_API_URL empty in frontend/.env so the browser calls /api/*
+      // (same origin). Vite forwards to the deployed backend that has Mongo
+      // data — same groups as maps-panel.vercel.app. Avoids CORS and avoids
+      // the empty local backend on :4000 (no MONGODB_URI).
       '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true
+        target: 'https://maps-panel-backend.vercel.app',
+        changeOrigin: true,
+        secure: true
       }
     }
   }
 });
-
