@@ -44,7 +44,9 @@ function fmtClockDate(d) {
 
 // Excel-style cell editor: a single-line textarea that grows to fit
 // wrapped text instead of clipping/truncating like a plain <input>.
-function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef }) {
+// commitOnBlur=false is used for the DRAFT (new-row) fields — losing focus
+// there must never submit the row, only pressing Enter or the + button.
+function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, commitOnBlur = true }) {
   const localRef = useRef(null);
   useEffect(() => {
     const el = localRef.current;
@@ -61,7 +63,7 @@ function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef })
       placeholder={placeholder}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      onBlur={(e) => onCommit?.(e.target.value)}
+      onBlur={(e) => { if (commitOnBlur) onCommit?.(e.target.value); }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -340,6 +342,7 @@ export default function SheetsPage({
           placeholder={tByText(meta.namePh)}
           onChange={setDraftTitle}
           onCommit={commitDraft}
+          commitOnBlur={false}
           disabled={busy}
         />
       </td>
@@ -358,6 +361,7 @@ export default function SheetsPage({
           placeholder={tByText(meta.subPh)}
           onChange={setDraftSubtitle}
           onCommit={commitDraft}
+          commitOnBlur={false}
           disabled={busy}
         />
       </td>
