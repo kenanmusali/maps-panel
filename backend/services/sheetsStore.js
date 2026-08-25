@@ -47,6 +47,14 @@ export const SHEET_KINDS = {
 
 export { ALLOWED_STATUS };
 
+// Sheets is a manual, standalone checklist — items created/edited elsewhere
+// (diagrams, pdfs, templates) must NEVER auto-populate a Sheets row. This
+// flag disables syncFromItem/syncFromProcess everywhere they're called
+// (pdfs.js, templates.js, processes.js status/create/update handlers) in
+// one place, without touching those call sites. Do not remove the
+// functions below — only this flag controls whether they run.
+const AUTO_SYNC_ENABLED = false;
+
 export function assertKind(kind) {
   if (!SHEET_KINDS[kind]) {
     const err = new Error('Yanlış sheets kind');
@@ -163,6 +171,7 @@ export async function backfillFromIndex(kind, user) {
  */
 export async function syncFromItem(kind, { itemId, title, subtitle, status, sheetId, strukturAdi }, user) {
   assertKind(kind);
+  if (!AUTO_SYNC_ENABLED) return null;
   const iid = Number(itemId);
   if (!Number.isFinite(iid)) return null;
 
@@ -295,4 +304,21 @@ export async function deleteSheetRow(kind, id, user) {
   }
   await writeSheets(kind, sheets, `Delete ${kind} sheet row ${id}`, user);
   return { ok: true };
+}
+
+/**
+ * Bulk-remove every row that was auto-populated from an item (itemId set) —
+ * i.e. rows created by the old GET-time backfill or by the (now-disabled)
+ * per-item auto-sync. Hand-typed blank rows (itemId=null) are never touched.
+ */
+export async function clearLinkedRows(kind, user) {
+  assertKind(kind);
+  const sheets = await readSheets(kind);
+  const before = sheets.items.length;
+  sheets.items = sheets.items.filter(x => x.itemId == null && x.processId == null);
+  const removed = before - sheets.items.length;
+  if (removed > 0) {
+    await writeSheets(kind, sheets, `Clear ${removed} auto-synced ${kind} sheet rows`, user);
+  }
+  return { removed, items: sheets.items };
 }

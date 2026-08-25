@@ -42,6 +42,37 @@ function fmtClockDate(d) {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
+// Excel-style cell editor: a single-line textarea that grows to fit
+// wrapped text instead of clipping/truncating like a plain <input>.
+function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef }) {
+  const localRef = useRef(null);
+  useEffect(() => {
+    const el = localRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={(el) => { localRef.current = el; if (cellRef) cellRef.current = el; }}
+      rows={1}
+      className="sheets-cell-input"
+      value={value || ''}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={(e) => onCommit?.(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          onCommit?.(value);
+          e.target.blur();
+        }
+      }}
+    />
+  );
+}
+
 const KIND_META = {
   diagrams: {
     title: 'Sheets',
@@ -160,13 +191,6 @@ export default function SheetsPage({
     }
   }
 
-  function onDraftKey(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commitDraft();
-    }
-  }
-
   const linked = (row) => row.itemId != null || row.processId != null;
 
   const stats = useMemo(() => {
@@ -264,21 +288,36 @@ export default function SheetsPage({
 
   function strukturInput(value, onChange, onCommit, placeholder, disabled) {
     return (
-      <input
-        className="sheets-cell-input"
-        value={value || ''}
+      <GridCell
+        value={value}
         placeholder={placeholder}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => onCommit?.(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            onCommit?.(value);
-          }
-        }}
+        onChange={onChange}
+        onCommit={onCommit}
       />
     );
+  }
+
+  const linkedCount = useMemo(
+    () => items.filter(x => x.itemId != null || x.processId != null).length,
+    [items]
+  );
+
+  async function handleClearLinked() {
+    if (!isAdmin || linkedCount === 0) return;
+    if (!confirm(
+      `${linkedCount} avtomatik doldurulmuş (fetch olunmuş) sətir silinsin?\n` +
+      `Əl ilə əlavə etdiyiniz sətirlərə toxunulmayacaq.`
+    )) return;
+    setBusy(true);
+    try {
+      await api.clearLinkedSheets(kind);
+      await load();
+    } catch (e) {
+      alert('Xəta: ' + (e.message || 'Silinmədi'));
+    } finally {
+      setBusy(false);
+    }
   }
 
   const draftRow = isAdmin ? (
@@ -295,13 +334,12 @@ export default function SheetsPage({
         </button>
       </td>
       <td className="col-title">
-        <input
-          ref={draftTitleRef}
-          className="sheets-cell-input"
+        <GridCell
+          cellRef={draftTitleRef}
           value={draftTitle}
           placeholder={tByText(meta.namePh)}
-          onChange={(e) => setDraftTitle(e.target.value)}
-          onKeyDown={onDraftKey}
+          onChange={setDraftTitle}
+          onCommit={commitDraft}
           disabled={busy}
         />
       </td>
@@ -315,12 +353,11 @@ export default function SheetsPage({
         )}
       </td>
       <td className="col-sub">
-        <input
-          className="sheets-cell-input"
+        <GridCell
           value={draftSubtitle}
           placeholder={tByText(meta.subPh)}
-          onChange={(e) => setDraftSubtitle(e.target.value)}
-          onKeyDown={onDraftKey}
+          onChange={setDraftSubtitle}
+          onCommit={commitDraft}
           disabled={busy}
         />
       </td>
@@ -386,6 +423,17 @@ export default function SheetsPage({
               >
                 {importBusy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
                 <span>{tByText('Excel-dən idxal et')}</span>
+              </button>
+            )}
+            {isAdmin && linkedCount > 0 && (
+              <button
+                type="button"
+                className="pill-chip sheets-io-btn sheets-io-danger"
+                onClick={handleClearLinked}
+                disabled={busy}
+                title="Diaqram/sənəd/şablon siyahısından avtomatik dolan sətirləri sil"
+              >
+                <Ban size={14} /><span>{tByText('Fetch olunanları təmizlə')} ({linkedCount})</span>
               </button>
             )}
             <input
@@ -476,20 +524,17 @@ export default function SheetsPage({
                         <td className="col-n">{i + 1}</td>
                         <td className="col-title">
                           {isAdmin ? (
-                            <input
-                              className="sheets-cell-input"
-                              value={row.title || ''}
-                              onChange={(e) => setItems(prev => prev.map(x =>
-                                Number(x.id) === Number(row.id) ? { ...x, title: e.target.value } : x
+                            <GridCell
+                              value={row.title}
+                              onChange={(v) => setItems(prev => prev.map(x =>
+                                Number(x.id) === Number(row.id) ? { ...x, title: v } : x
                               ))}
-                              onBlur={(e) => {
-                                if (e.target.value !== (row.title || '')) {
-                                  patchRow(row.id, { title: e.target.value });
-                                }
+                              onCommit={(v) => {
+                                if (v !== (row.title || '')) patchRow(row.id, { title: v });
                               }}
                             />
                           ) : (
-                            <span>{row.title || '—'}</span>
+                            <span className="sheets-cell-text">{row.title || '—'}</span>
                           )}
                         </td>
                         <td className="col-struktur">
@@ -505,46 +550,40 @@ export default function SheetsPage({
                               tByText('Qrup adı…')
                             )
                           ) : (
-                            <span>{row.strukturAdi || '—'}</span>
+                            <span className="sheets-cell-text">{row.strukturAdi || '—'}</span>
                           )}
                         </td>
                         <td className="col-sub">
                           {isAdmin ? (
-                            <input
-                              className="sheets-cell-input"
-                              value={row.subtitle || ''}
+                            <GridCell
+                              value={row.subtitle}
                               placeholder="—"
-                              onChange={(e) => setItems(prev => prev.map(x =>
-                                Number(x.id) === Number(row.id) ? { ...x, subtitle: e.target.value } : x
+                              onChange={(v) => setItems(prev => prev.map(x =>
+                                Number(x.id) === Number(row.id) ? { ...x, subtitle: v } : x
                               ))}
-                              onBlur={(e) => {
-                                if (e.target.value !== (row.subtitle || '')) {
-                                  patchRow(row.id, { subtitle: e.target.value });
-                                }
+                              onCommit={(v) => {
+                                if (v !== (row.subtitle || '')) patchRow(row.id, { subtitle: v });
                               }}
                             />
                           ) : (
-                            <span>{row.subtitle || '—'}</span>
+                            <span className="sheets-cell-text">{row.subtitle || '—'}</span>
                           )}
                         </td>
                         {hasExtraFields && EXTRA_FIELDS.map(f => (
                           <td className="col-extra" key={f.key}>
                             {isAdmin ? (
-                              <input
-                                className="sheets-cell-input"
-                                value={row[f.key] || ''}
+                              <GridCell
+                                value={row[f.key]}
                                 placeholder={tByText(f.ph)}
-                                onChange={(e) => setItems(prev => prev.map(x =>
-                                  Number(x.id) === Number(row.id) ? { ...x, [f.key]: e.target.value } : x
+                                onChange={(v) => setItems(prev => prev.map(x =>
+                                  Number(x.id) === Number(row.id) ? { ...x, [f.key]: v } : x
                                 ))}
-                                onBlur={(e) => {
-                                  if (e.target.value !== (row[f.key] || '')) {
-                                    patchRow(row.id, { [f.key]: e.target.value });
-                                  }
+                                onCommit={(v) => {
+                                  if (v !== (row[f.key] || '')) patchRow(row.id, { [f.key]: v });
                                 }}
                               />
                             ) : (
-                              <span>{row[f.key] || '—'}</span>
+                              <span className="sheets-cell-text">{row[f.key] || '—'}</span>
                             )}
                           </td>
                         ))}

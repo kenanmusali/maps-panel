@@ -6,6 +6,7 @@ import {
   createSheetRow,
   updateSheetRow,
   deleteSheetRow,
+  clearLinkedRows,
   syncFromItem,
   ALLOWED_STATUS,
   EXTRA_FIELDS
@@ -69,6 +70,16 @@ router.post('/:kind/sync', requireAdmin, async (req, res, next) => {
       itemId: id, title, subtitle, status, sheetId, strukturAdi
     }, req.user);
     res.json(row);
+  } catch (e) { next(e); }
+});
+
+// Bulk-remove rows that were auto-populated from diagrams/pdfs/templates
+// (itemId set) — leaves hand-typed blank rows untouched.
+router.delete('/:kind/linked', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
+  try {
+    const result = await clearLinkedRows(req.params.kind, req.user);
+    res.json(result);
   } catch (e) { next(e); }
 });
 
