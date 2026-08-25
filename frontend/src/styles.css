@@ -2751,6 +2751,8 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   color: var(--text-primary);
 }
 .sheets-table tr.sheet-only { background: var(--surface); }
+.sheets-table tr.sheets-blank-row { color: var(--text-secondary); }
+.sheets-table tr.sheets-blank-row .col-n { color: var(--text-muted); }
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
 .sheets-table .col-n { width: 52px; text-align: center; color: var(--text-muted); font-weight: 600; padding: 10px 8px; }
 .sheets-table .col-title { width: 28%; }

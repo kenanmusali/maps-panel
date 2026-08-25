@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
-  LogOut, Loader2, Trash2, ChevronLeft, Plus, Download, Upload
+  LogOut, Loader2, Trash2, ChevronLeft, Download, Upload
 } from './icons.jsx';
 import { LayoutGrid, Ban } from 'lucide-react';
 import { api } from '../api/client.js';
@@ -18,6 +18,17 @@ const EXTRA_FIELDS = [
   { key: 'approvalDate', ph: 'gg.aa.iiii', label: 'Təsdiq tarixi' },
   { key: 'protocol', ph: 'Qərar / Protokol…', label: 'Qərar / Protokol' }
 ];
+
+// Excel-style behaviour: always keep a pool of ready-to-type blank rows at
+// the bottom of the sheet. Fresh/near-empty sheets start with a full pool;
+// once you have that many real rows, exactly one blank row trails the last
+// one (fill row 45 → row 46 appears empty, fill 46 → 47 appears, etc).
+const DEFAULT_BLANK_ROWS = 15;
+
+let blankSeq = 0;
+function makeBlankRow() {
+  return { key: `blank-${++blankSeq}`, title: '', subtitle: '', strukturAdi: '', status: null, extra: {} };
+}
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -115,14 +126,10 @@ export default function SheetsPage({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [draftTitle, setDraftTitle] = useState('');
-  const [draftStruktur, setDraftStruktur] = useState('');
-  const [draftSubtitle, setDraftSubtitle] = useState('');
-  const [draftStatus, setDraftStatus] = useState(null);
-  const [draftExtra, setDraftExtra] = useState({});
+  const [pendingBlanks, setPendingBlanks] = useState(() => (isAdmin ? Array.from({ length: DEFAULT_BLANK_ROWS }, makeBlankRow) : []));
   const [statusFilter, setStatusFilter] = useState(null); // null | 'progress'|'done'|'notdone'|'sign'|'nostatus'
   const [importBusy, setImportBusy] = useState(false);
-  const draftTitleRef = useRef(null);
+  const committingRef = useRef(new Set());
   const importInputRef = useRef(null);
 
   useEffect(() => {
@@ -145,28 +152,74 @@ export default function SheetsPage({
 
   useEffect(() => { load(); }, [kind]);
 
-  async function commitDraft() {
-    if (busy || !isAdmin) return;
-    setBusy(true);
-    try {
-      const row = await api.createSheet(kind, {
-        title: draftTitle.trim(),
-        subtitle: draftSubtitle.trim(),
-        strukturAdi: draftStruktur.trim(),
-        status: withStatus ? draftStatus : null,
-        ...(hasExtraFields ? draftExtra : {})
-      });
-      setItems(prev => [...prev, row]);
-      setDraftTitle('');
-      setDraftStruktur('');
-      setDraftSubtitle('');
-      setDraftStatus(null);
-      setDraftExtra({});
-      requestAnimationFrame(() => draftTitleRef.current?.focus());
-    } catch (e) {
-      alert('Xəta: ' + (e.message || 'Əlavə edilmədi'));
-    } finally {
-      setBusy(false);
+  // Reset the blank-row pool whenever the sheet kind changes.
+  useEffect(() => {
+    setPendingBlanks(isAdmin ? Array.from({ length: DEFAULT_BLANK_ROWS }, makeBlankRow) : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, isAdmin]);
+
+  // Keep the trailing blank-row pool topped up: once real rows fill the
+  // default pool, always keep exactly one empty row after the last one.
+  useEffect(() => {
+    if (!isAdmin) return;
+    const desired = Math.max(items.length + 1, DEFAULT_BLANK_ROWS) - items.length;
+    setPendingBlanks(prev => {
+      if (prev.length === desired) return prev;
+      if (prev.length < desired) {
+        return [...prev, ...Array.from({ length: desired - prev.length }, makeBlankRow)];
+      }
+      return prev.slice(0, desired);
+    });
+  }, [items.length, isAdmin]);
+
+  function blankHasContent(b) {
+    return !!(
+      (b.title || '').trim() ||
+      (b.subtitle || '').trim() ||
+      (b.strukturAdi || '').trim() ||
+      (withStatus && b.status) ||
+      (hasExtraFields && Object.values(b.extra || {}).some(v => (v || '').trim()))
+    );
+  }
+
+  function updateBlank(key, field, value) {
+    setPendingBlanks(prev => prev.map(b => (b.key === key ? { ...b, [field]: value } : b)));
+  }
+
+  function updateBlankExtra(key, fieldKey, value) {
+    setPendingBlanks(prev => prev.map(b => (
+      b.key === key ? { ...b, extra: { ...b.extra, [fieldKey]: value } } : b
+    )));
+  }
+
+  function commitBlankRow(blank) {
+    if (!isAdmin || committingRef.current.has(blank.key)) return;
+    if (!blankHasContent(blank)) return;
+    committingRef.current.add(blank.key);
+    (async () => {
+      try {
+        const row = await api.createSheet(kind, {
+          title: (blank.title || '').trim(),
+          subtitle: (blank.subtitle || '').trim(),
+          strukturAdi: (blank.strukturAdi || '').trim(),
+          status: withStatus ? (blank.status || null) : null,
+          ...(hasExtraFields ? blank.extra : {})
+        });
+        setItems(prev => [...prev, row]);
+        setPendingBlanks(prev => prev.filter(b => b.key !== blank.key));
+      } catch (e) {
+        alert('Xəta: ' + (e.message || 'Əlavə edilmədi'));
+      } finally {
+        committingRef.current.delete(blank.key);
+      }
+    })();
+  }
+
+  // Commit a blank row only once focus actually leaves that row — not on
+  // every field-to-field tab within the same row.
+  function handleBlankRowBlur(e, blank) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      commitBlankRow(blank);
     }
   }
 
@@ -305,6 +358,17 @@ export default function SheetsPage({
     [items]
   );
 
+  const isBlankRow = (row) => {
+    if (row.itemId != null || row.processId != null) return false; // never touch linked rows here
+    if ((row.title || '').trim()) return false;
+    if ((row.subtitle || '').trim()) return false;
+    if ((row.strukturAdi || '').trim()) return false;
+    if (row.status) return false;
+    if (hasExtraFields && EXTRA_FIELDS.some(f => (row[f.key] || '').trim())) return false;
+    return true;
+  };
+  const blankCount = useMemo(() => items.filter(isBlankRow).length, [items, hasExtraFields]);
+
   async function handleClearLinked() {
     if (!isAdmin || linkedCount === 0) return;
     if (!confirm(
@@ -322,73 +386,23 @@ export default function SheetsPage({
     }
   }
 
-  const draftRow = isAdmin ? (
-    <tr className="sheets-draft-row">
-      <td className="col-n">
-        <button
-          type="button"
-          className="sheets-plus-btn"
-          title="Əlavə et"
-          disabled={busy}
-          onClick={commitDraft}
-        >
-          {busy ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
-        </button>
-      </td>
-      <td className="col-title">
-        <GridCell
-          cellRef={draftTitleRef}
-          value={draftTitle}
-          placeholder={tByText(meta.namePh)}
-          onChange={setDraftTitle}
-          onCommit={commitDraft}
-          commitOnBlur={false}
-          disabled={busy}
-        />
-      </td>
-      <td className="col-struktur">
-        {strukturInput(
-          draftStruktur,
-          setDraftStruktur,
-          setDraftStruktur,
-          tByText('Qrup adı…'),
-          busy
-        )}
-      </td>
-      <td className="col-sub">
-        <GridCell
-          value={draftSubtitle}
-          placeholder={tByText(meta.subPh)}
-          onChange={setDraftSubtitle}
-          onCommit={commitDraft}
-          commitOnBlur={false}
-          disabled={busy}
-        />
-      </td>
-      {hasExtraFields && EXTRA_FIELDS.map(f => (
-        <td className="col-extra" key={f.key}>
-          {strukturInput(
-            draftExtra[f.key],
-            (v) => setDraftExtra(prev => ({ ...prev, [f.key]: v })),
-            (v) => setDraftExtra(prev => ({ ...prev, [f.key]: v })),
-            tByText(f.ph),
-            busy
-          )}
-        </td>
-      ))}
-      {withStatus && (
-        <td className="col-status">
-          <StatusControl
-            value={draftStatus}
-            editable
-            onChange={setDraftStatus}
-          />
-        </td>
-      )}
-      <td className="col-date">—</td>
-      <td className="col-act">—</td>
-    </tr>
-  ) : null;
+  async function handleClearBlank() {
+    if (!isAdmin || blankCount === 0) return;
+    if (!confirm(`${blankCount} tamamilə boş sətir silinsin? Bu geri qaytarılmır.`)) return;
+    setBusy(true);
+    try {
+      const toDelete = items.filter(isBlankRow);
+      for (const row of toDelete) {
+        await api.deleteSheet(kind, row.id);
+      }
+      await load();
+    } catch (e) {
+      alert('Xəta: ' + (e.message || 'Silinmədi'));
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="sheets-page">
@@ -438,6 +452,17 @@ export default function SheetsPage({
                 title="Diaqram/sənəd/şablon siyahısından avtomatik dolan sətirləri sil"
               >
                 <Ban size={14} /><span>{tByText('Fetch olunanları təmizlə')} ({linkedCount})</span>
+              </button>
+            )}
+            {isAdmin && blankCount > 0 && (
+              <button
+                type="button"
+                className="pill-chip sheets-io-btn sheets-io-danger"
+                onClick={handleClearBlank}
+                disabled={busy}
+                title="Tamamilə boş (heç nə yazılmamış) sətirləri sil"
+              >
+                <Trash2 size={14} /><span>{tByText('Boş sətirləri sil')} ({blankCount})</span>
               </button>
             )}
             <input
@@ -629,17 +654,70 @@ export default function SheetsPage({
                         </td>
                       </tr>
                     )}
+                    {isAdmin && pendingBlanks.map((blank, bi) => (
+                      <tr
+                        key={blank.key}
+                        className="sheet-only sheets-blank-row"
+                        onBlur={(e) => handleBlankRowBlur(e, blank)}
+                      >
+                        <td className="col-n">{items.length + bi + 1}</td>
+                        <td className="col-title">
+                          <GridCell
+                            value={blank.title}
+                            placeholder={tByText(meta.namePh)}
+                            onChange={(v) => updateBlank(blank.key, 'title', v)}
+                            onCommit={() => commitBlankRow(blank)}
+                            commitOnBlur={false}
+                          />
+                        </td>
+                        <td className="col-struktur">
+                          <GridCell
+                            value={blank.strukturAdi}
+                            placeholder={tByText('Qrup adı…')}
+                            onChange={(v) => updateBlank(blank.key, 'strukturAdi', v)}
+                            onCommit={() => commitBlankRow(blank)}
+                            commitOnBlur={false}
+                          />
+                        </td>
+                        <td className="col-sub">
+                          <GridCell
+                            value={blank.subtitle}
+                            placeholder={tByText(meta.subPh)}
+                            onChange={(v) => updateBlank(blank.key, 'subtitle', v)}
+                            onCommit={() => commitBlankRow(blank)}
+                            commitOnBlur={false}
+                          />
+                        </td>
+                        {hasExtraFields && EXTRA_FIELDS.map(f => (
+                          <td className="col-extra" key={f.key}>
+                            <GridCell
+                              value={blank.extra[f.key]}
+                              placeholder={tByText(f.ph)}
+                              onChange={(v) => updateBlankExtra(blank.key, f.key, v)}
+                              onCommit={() => commitBlankRow(blank)}
+                              commitOnBlur={false}
+                            />
+                          </td>
+                        ))}
+                        {withStatus && (
+                          <td className="col-status">
+                            <StatusControl
+                              value={blank.status}
+                              editable
+                              onChange={(status) => {
+                                updateBlank(blank.key, 'status', status);
+                                commitBlankRow({ ...blank, status });
+                              }}
+                            />
+                          </td>
+                        )}
+                        <td className="col-date">—</td>
+                        <td className="col-act">—</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-
-              {isAdmin && (
-                <div className="sheets-draft-foot">
-                  <table className="sheets-table sheets-draft-table">
-                    <tbody>{draftRow}</tbody>
-                  </table>
-                </div>
-              )}
             </>
           )}
         </div>
