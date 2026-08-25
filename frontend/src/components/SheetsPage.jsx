@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
-  LogOut, Loader2, Trash2, ChevronLeft, Plus
+  LogOut, Loader2, Trash2, ChevronLeft, Plus, Download, Upload
 } from './icons.jsx';
-import { FileSpreadsheet, LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Ban } from 'lucide-react';
 import { api } from '../api/client.js';
 import { StatusControl, STATUS_META, STATUS_ORDER } from './Status.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
+import { exportSheetToExcel, importSheetRowsFromExcel } from './sheetsExcel.js';
 
 // Kinds that get the hand-typed normativ-sənəd fields (sənədin növü, nəşr,
 // təsdiq tarixi, qərar/protokol) — Normativ Sənədlər (pdfs) və Şablonlar.
@@ -86,7 +87,10 @@ export default function SheetsPage({
   const [draftSubtitle, setDraftSubtitle] = useState('');
   const [draftStatus, setDraftStatus] = useState(null);
   const [draftExtra, setDraftExtra] = useState({});
+  const [statusFilter, setStatusFilter] = useState(null); // null | 'progress'|'done'|'notdone'|'sign'|'nostatus'
+  const [importBusy, setImportBusy] = useState(false);
   const draftTitleRef = useRef(null);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -167,11 +171,96 @@ export default function SheetsPage({
 
   const stats = useMemo(() => {
     const byStatus = { progress: 0, done: 0, notdone: 0, sign: 0 };
+    let nostatus = 0;
     for (const row of items) {
       if (row.status && byStatus[row.status] != null) byStatus[row.status] += 1;
+      else nostatus += 1;
     }
-    return { total: items.length, byStatus };
+    return { total: items.length, byStatus, nostatus };
   }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (!statusFilter) return items;
+    if (statusFilter === 'nostatus') return items.filter(x => !x.status);
+    return items.filter(x => x.status === statusFilter);
+  }, [items, statusFilter]);
+
+  function toggleFilter(key) {
+    setStatusFilter(prev => (prev === key ? null : key));
+  }
+
+  function statusLabel(key) {
+    const m = STATUS_META[key];
+    return m ? t(m.id, m.default) : '';
+  }
+
+  function statusKeyFromLabel(raw) {
+    const s = String(raw || '').trim().toLowerCase();
+    if (!s) return null;
+    for (const k of STATUS_ORDER) {
+      if (k.toLowerCase() === s) return k;
+      const m = STATUS_META[k];
+      if (t(m.id, m.default).toLowerCase() === s || m.default.toLowerCase() === s) return k;
+    }
+    return null;
+  }
+
+  function handleExport() {
+    exportSheetToExcel({
+      fileTitle: `${tByText(meta.title)}-${kind}`,
+      sheetName: tByText(meta.title),
+      items,
+      hasExtraFields,
+      extraFields: EXTRA_FIELDS,
+      withStatus,
+      statusLabel,
+      fmtDate
+    });
+  }
+
+  function handleImportClick() {
+    if (!isAdmin || importBusy) return;
+    importInputRef.current?.click();
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !isAdmin) return;
+    setImportBusy(true);
+    try {
+      const rows = await importSheetRowsFromExcel(file, {
+        hasExtraFields,
+        extraFields: EXTRA_FIELDS,
+        statusKeyFromLabel
+      });
+      if (!rows.length) {
+        alert('Excel faylında sətir tapılmadı.');
+        return;
+      }
+      // Additive: create each parsed row as a new sheet row. Existing
+      // rows are never touched or deleted.
+      for (const r of rows) {
+        const created = await api.createSheet(kind, {
+          title: r.title,
+          subtitle: r.subtitle,
+          strukturAdi: r.strukturAdi,
+          status: withStatus ? (r.status || null) : null,
+          ...(hasExtraFields ? {
+            docType: r.docType || '',
+            edition: r.edition || '',
+            approvalDate: r.approvalDate || '',
+            protocol: r.protocol || ''
+          } : {})
+        });
+        setItems(prev => [...prev, created]);
+      }
+    } catch (err) {
+      alert('Xəta: ' + (err.message || 'İdxal edilmədi'));
+    } finally {
+      setImportBusy(false);
+    }
+  }
 
   function strukturInput(value, onChange, onCommit, placeholder, disabled) {
     return (
@@ -256,17 +345,7 @@ export default function SheetsPage({
         </td>
       )}
       <td className="col-date">—</td>
-      <td className="col-act">
-        <button
-          type="button"
-          className="icon-btn"
-          title="Əlavə et"
-          disabled={busy}
-          onClick={commitDraft}
-        >
-          {busy ? <Loader2 size={15} className="spin" /> : <FileSpreadsheet size={15} />}
-        </button>
-      </td>
+      <td className="col-act">—</td>
     </tr>
   ) : null;
 
@@ -294,25 +373,74 @@ export default function SheetsPage({
             {tByText(meta.title)}
             <span className="sheets-sub">{tByText(meta.sub)}</span>
           </h2>
+          <div className="sheets-io-actions">
+            <button type="button" className="pill-chip sheets-io-btn" onClick={handleExport}>
+              <Download size={14} /><span>{tByText('Excel-ə çıxart')}</span>
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="pill-chip sheets-io-btn"
+                onClick={handleImportClick}
+                disabled={importBusy}
+              >
+                {importBusy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+                <span>{tByText('Excel-dən idxal et')}</span>
+              </button>
+            )}
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={handleImportFile}
+            />
+          </div>
         </div>
 
         {!loading && !error && (
           <div className="sheets-stats">
-            <div className="sheets-stat-card total">
-              <LayoutGrid size={16} />
-              <span className="sheets-stat-num">{stats.total}</span>
-              <span className="sheets-stat-label">{tByText('Ümumi say')}</span>
-            </div>
+            <button
+              type="button"
+              className={`sheets-stat-card total ${!statusFilter ? 'active' : ''}`}
+              onClick={() => setStatusFilter(null)}
+            >
+              <LayoutGrid size={18} />
+              <span className="sheets-stat-text">
+                <span className="sheets-stat-num">{stats.total}</span>
+                <span className="sheets-stat-label">{tByText('Ümumi say')}</span>
+              </span>
+            </button>
             {withStatus && STATUS_ORDER.map(k => {
               const m = STATUS_META[k];
               return (
-                <div className={`sheets-stat-card ${m.cls}`} key={k}>
-                  <m.Icon size={16} />
-                  <span className="sheets-stat-num">{stats.byStatus[k] || 0}</span>
-                  <span className="sheets-stat-label">{t(m.id, m.default)}</span>
-                </div>
+                <button
+                  type="button"
+                  key={k}
+                  className={`sheets-stat-card ${m.cls} ${statusFilter === k ? 'active' : ''}`}
+                  onClick={() => toggleFilter(k)}
+                >
+                  <m.Icon size={18} />
+                  <span className="sheets-stat-text">
+                    <span className="sheets-stat-num">{stats.byStatus[k] || 0}</span>
+                    <span className="sheets-stat-label">{t(m.id, m.default)}</span>
+                  </span>
+                </button>
               );
             })}
+            {withStatus && (
+              <button
+                type="button"
+                className={`sheets-stat-card nostatus ${statusFilter === 'nostatus' ? 'active' : ''}`}
+                onClick={() => toggleFilter('nostatus')}
+              >
+                <Ban size={18} />
+                <span className="sheets-stat-text">
+                  <span className="sheets-stat-num">{stats.nostatus}</span>
+                  <span className="sheets-stat-label">{tByText('Statussuz')}</span>
+                </span>
+              </button>
+            )}
           </div>
         )}
 
@@ -343,7 +471,7 @@ export default function SheetsPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((row, i) => (
+                    {filteredItems.map((row, i) => (
                       <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
                         <td className="col-n">{i + 1}</td>
                         <td className="col-title">
@@ -448,6 +576,13 @@ export default function SheetsPage({
                       <tr>
                         <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
                           Sheets boşdur
+                        </td>
+                      </tr>
+                    )}
+                    {items.length > 0 && filteredItems.length === 0 && (
+                      <tr>
+                        <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
+                          {tByText('Bu filtrə uyğun sətir yoxdur')}
                         </td>
                       </tr>
                     )}

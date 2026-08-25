@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   SHEET_KINDS,
   assertKind,
-  backfillFromIndex,
+  readSheets,
   createSheetRow,
   updateSheetRow,
   deleteSheetRow,
@@ -32,7 +32,12 @@ router.get('/:kind', async (req, res, next) => {
   // Avoid treating legacy paths as kinds — only known kinds
   if (!SHEET_KINDS[req.params.kind]) return next();
   try {
-    const sheets = await backfillFromIndex(req.params.kind, req.user);
+    // NOTE: Sheets is a manual, standalone checklist — it must never
+    // auto-fetch/backfill rows from the diagrams/pdfs/templates index.
+    // Rows only appear here when an admin adds them by hand (blank "+"
+    // row) or when a section explicitly syncs a single item via
+    // POST /:kind/sync. Do not reintroduce backfillFromIndex() here.
+    const sheets = await readSheets(req.params.kind);
     res.json({ kind: req.params.kind, items: sheets.items || [] });
   } catch (e) { next(e); }
 });
@@ -86,7 +91,7 @@ router.delete('/:kind/:id', requireAdmin, async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const sheets = await backfillFromIndex('diagrams', req.user);
+    const sheets = await readSheets('diagrams');
     res.json({ kind: 'diagrams', items: sheets.items || [] });
   } catch (e) { next(e); }
 });

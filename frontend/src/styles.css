@@ -2613,44 +2613,75 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   display: block; margin-top: 4px;
   font-size: 13px; font-weight: 500; color: var(--text-muted);
 }
+.sheets-brand { position: relative; }
+.sheets-io-actions {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  display: flex;
+  gap: 8px;
+}
+.sheets-io-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.sheets-io-btn:hover { background: var(--primary-soft); }
+.sheets-io-btn:disabled { opacity: 0.6; cursor: default; }
 .sheets-stats {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-  margin-bottom: 2px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
 }
 .sheets-stat-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 8px;
+  gap: 10px;
+  padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-md);
   box-shadow: var(--sh-xs);
   color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .1s ease;
 }
-.sheets-stat-num {
-  font-size: 18px;
+.sheets-stat-card:hover {
+  border-color: var(--border-strong, var(--primary));
+  transform: translateY(-1px);
+}
+.sheets-stat-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.sheets-stat-card > svg { flex: 0 0 auto; }
+.sheets-stat-card .sheets-stat-num {
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1;
 }
-.sheets-stat-label {
-  font-size: 11px;
+.sheets-stat-card .sheets-stat-label {
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
-  text-align: center;
+  white-space: nowrap;
 }
-.sheets-stat-card.total { color: var(--primary); }
+.sheets-stat-text { display: flex; flex-direction: column; gap: 3px; }
+.sheets-stat-card.total svg { color: var(--primary); }
 .sheets-stat-card.total .sheets-stat-num { color: var(--primary); }
 .sheets-stat-card.progress svg { color: var(--warn, #d97706); }
 .sheets-stat-card.done svg { color: var(--success, #16a34a); }
 .sheets-stat-card.notdone svg { color: var(--danger, #dc2626); }
 .sheets-stat-card.sign svg { color: var(--primary); }
+.sheets-stat-card.nostatus svg { color: var(--text-muted); }
 .sheets-table .col-extra {
   width: 150px;
   min-width: 130px;

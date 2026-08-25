@@ -55,6 +55,7 @@ export {
   Share2,
   Link2,
   Download,
+  Upload,
   FileJson,
   FileSpreadsheet,
   FileText as FilePdf,
