@@ -182,14 +182,28 @@ export default function SheetsPage({
     );
   }
 
+  // If the row that was just edited is the last row in the pool and now
+  // has content, immediately append a fresh blank row after it — don't
+  // wait for the server commit (on blur) to top the pool up.
+  function ensureTrailingBlank(rows) {
+    if (rows.length === 0) return rows;
+    const last = rows[rows.length - 1];
+    if (blankHasContent(last)) return [...rows, makeBlankRow()];
+    return rows;
+  }
+
   function updateBlank(key, field, value) {
-    setPendingBlanks(prev => prev.map(b => (b.key === key ? { ...b, [field]: value } : b)));
+    setPendingBlanks(prev => ensureTrailingBlank(
+      prev.map(b => (b.key === key ? { ...b, [field]: value } : b))
+    ));
   }
 
   function updateBlankExtra(key, fieldKey, value) {
-    setPendingBlanks(prev => prev.map(b => (
-      b.key === key ? { ...b, extra: { ...b.extra, [fieldKey]: value } } : b
-    )));
+    setPendingBlanks(prev => ensureTrailingBlank(
+      prev.map(b => (
+        b.key === key ? { ...b, extra: { ...b.extra, [fieldKey]: value } } : b
+      ))
+    ));
   }
 
   function commitBlankRow(blank) {
@@ -555,6 +569,7 @@ export default function SheetsPage({
                           {isAdmin ? (
                             <GridCell
                               value={row.title}
+                              placeholder="—"
                               onChange={(v) => setItems(prev => prev.map(x =>
                                 Number(x.id) === Number(row.id) ? { ...x, title: v } : x
                               ))}
@@ -711,7 +726,7 @@ export default function SheetsPage({
                             />
                           </td>
                         )}
-                        <td className="col-date">—</td>
+                        <td className="col-date">{fmtClockDate(now)}</td>
                         <td className="col-act">—</td>
                       </tr>
                     ))}
