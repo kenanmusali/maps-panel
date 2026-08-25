@@ -7,7 +7,8 @@ import {
   updateSheetRow,
   deleteSheetRow,
   syncFromItem,
-  ALLOWED_STATUS
+  ALLOWED_STATUS,
+  EXTRA_FIELDS
 } from '../services/sheetsStore.js';
 
 const router = Router();
@@ -15,6 +16,14 @@ const router = Router();
 function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   next();
+}
+
+function pickExtras(body) {
+  const out = {};
+  for (const f of EXTRA_FIELDS) {
+    if (typeof body?.[f] === 'string') out[f] = body[f];
+  }
+  return out;
 }
 
 // ---- kind-scoped routes: /api/sheets/:kind/... ----
@@ -35,7 +44,8 @@ router.post('/:kind', requireAdmin, async (req, res, next) => {
       title: req.body?.title,
       subtitle: req.body?.subtitle,
       status: req.body?.status,
-      strukturAdi: req.body?.strukturAdi
+      strukturAdi: req.body?.strukturAdi,
+      ...pickExtras(req.body)
     }, req.user);
     res.status(201).json(item);
   } catch (e) { next(e); }

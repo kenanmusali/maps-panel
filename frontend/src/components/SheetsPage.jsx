@@ -1,12 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
   LogOut, Loader2, Trash2, ChevronLeft, Plus
 } from './icons.jsx';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, LayoutGrid } from 'lucide-react';
 import { api } from '../api/client.js';
-import { StatusControl } from './Status.jsx';
+import { StatusControl, STATUS_META, STATUS_ORDER } from './Status.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
+
+// Kinds that get the hand-typed normativ-sənəd fields (sənədin növü, nəşr,
+// təsdiq tarixi, qərar/protokol) — Normativ Sənədlər (pdfs) və Şablonlar.
+const EXTRA_FIELD_KINDS = new Set(['pdfs', 'templates']);
+const EXTRA_FIELDS = [
+  { key: 'docType', ph: 'Sənədin növü…', label: 'Sənədin növü' },
+  { key: 'edition', ph: 'Nəşr…', label: 'Nəşr' },
+  { key: 'approvalDate', ph: 'gg.aa.iiii', label: 'Təsdiq tarixi' },
+  { key: 'protocol', ph: 'Qərar / Protokol…', label: 'Qərar / Protokol' }
+];
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -63,6 +73,7 @@ export default function SheetsPage({
   const isAdmin = role === 'admin';
   const isViewer = role === 'viewer' || role === 'editor_2';
   const meta = KIND_META[kind] || KIND_META.diagrams;
+  const hasExtraFields = EXTRA_FIELD_KINDS.has(kind);
 
   const [now, setNow] = useState(new Date());
   const [items, setItems] = useState([]);
@@ -74,6 +85,7 @@ export default function SheetsPage({
   const [draftStruktur, setDraftStruktur] = useState('');
   const [draftSubtitle, setDraftSubtitle] = useState('');
   const [draftStatus, setDraftStatus] = useState(null);
+  const [draftExtra, setDraftExtra] = useState({});
   const draftTitleRef = useRef(null);
 
   useEffect(() => {
@@ -104,13 +116,15 @@ export default function SheetsPage({
         title: draftTitle.trim(),
         subtitle: draftSubtitle.trim(),
         strukturAdi: draftStruktur.trim(),
-        status: withStatus ? draftStatus : null
+        status: withStatus ? draftStatus : null,
+        ...(hasExtraFields ? draftExtra : {})
       });
       setItems(prev => [...prev, row]);
       setDraftTitle('');
       setDraftStruktur('');
       setDraftSubtitle('');
       setDraftStatus(null);
+      setDraftExtra({});
       requestAnimationFrame(() => draftTitleRef.current?.focus());
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Əlavə edilmədi'));
@@ -150,6 +164,14 @@ export default function SheetsPage({
   }
 
   const linked = (row) => row.itemId != null || row.processId != null;
+
+  const stats = useMemo(() => {
+    const byStatus = { progress: 0, done: 0, notdone: 0, sign: 0 };
+    for (const row of items) {
+      if (row.status && byStatus[row.status] != null) byStatus[row.status] += 1;
+    }
+    return { total: items.length, byStatus };
+  }, [items]);
 
   function strukturInput(value, onChange, onCommit, placeholder, disabled) {
     return (
@@ -213,6 +235,17 @@ export default function SheetsPage({
           disabled={busy}
         />
       </td>
+      {hasExtraFields && EXTRA_FIELDS.map(f => (
+        <td className="col-extra" key={f.key}>
+          {strukturInput(
+            draftExtra[f.key],
+            (v) => setDraftExtra(prev => ({ ...prev, [f.key]: v })),
+            (v) => setDraftExtra(prev => ({ ...prev, [f.key]: v })),
+            tByText(f.ph),
+            busy
+          )}
+        </td>
+      ))}
       {withStatus && (
         <td className="col-status">
           <StatusControl
@@ -263,6 +296,26 @@ export default function SheetsPage({
           </h2>
         </div>
 
+        {!loading && !error && (
+          <div className="sheets-stats">
+            <div className="sheets-stat-card total">
+              <LayoutGrid size={16} />
+              <span className="sheets-stat-num">{stats.total}</span>
+              <span className="sheets-stat-label">{tByText('Ümumi say')}</span>
+            </div>
+            {withStatus && STATUS_ORDER.map(k => {
+              const m = STATUS_META[k];
+              return (
+                <div className={`sheets-stat-card ${m.cls}`} key={k}>
+                  <m.Icon size={16} />
+                  <span className="sheets-stat-num">{stats.byStatus[k] || 0}</span>
+                  <span className="sheets-stat-label">{t(m.id, m.default)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="sheets-table-wrap">
           {loading && (
             <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>
@@ -281,6 +334,9 @@ export default function SheetsPage({
                       <th className="col-title">{tByText('Diaqram adı')}</th>
                       <th className="col-struktur">{tByText('Struktur adı')}</th>
                       <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
+                      {hasExtraFields && EXTRA_FIELDS.map(f => (
+                        <th className="col-extra" key={f.key}>{tByText(f.label)}</th>
+                      ))}
                       {withStatus && <th className="col-status">{tByText('Status')}</th>}
                       <th className="col-date">{tByText('Date')}</th>
                       {isAdmin && <th className="col-act" aria-label="Actions" />}
@@ -343,6 +399,27 @@ export default function SheetsPage({
                             <span>{row.subtitle || '—'}</span>
                           )}
                         </td>
+                        {hasExtraFields && EXTRA_FIELDS.map(f => (
+                          <td className="col-extra" key={f.key}>
+                            {isAdmin ? (
+                              <input
+                                className="sheets-cell-input"
+                                value={row[f.key] || ''}
+                                placeholder={tByText(f.ph)}
+                                onChange={(e) => setItems(prev => prev.map(x =>
+                                  Number(x.id) === Number(row.id) ? { ...x, [f.key]: e.target.value } : x
+                                ))}
+                                onBlur={(e) => {
+                                  if (e.target.value !== (row[f.key] || '')) {
+                                    patchRow(row.id, { [f.key]: e.target.value });
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span>{row[f.key] || '—'}</span>
+                            )}
+                          </td>
+                        ))}
                         {withStatus && (
                           <td className="col-status">
                             <StatusControl
@@ -369,7 +446,7 @@ export default function SheetsPage({
                     ))}
                     {items.length === 0 && !isAdmin && (
                       <tr>
-                        <td colSpan={withStatus ? 7 : 6} className="sheets-empty-cell">
+                        <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
                           Sheets boşdur
                         </td>
                       </tr>

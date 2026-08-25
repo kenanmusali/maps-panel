@@ -2613,6 +2613,48 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   display: block; margin-top: 4px;
   font-size: 13px; font-weight: 500; color: var(--text-muted);
 }
+.sheets-stats {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.sheets-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-xs);
+  color: var(--text-secondary);
+}
+.sheets-stat-num {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.sheets-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+.sheets-stat-card.total { color: var(--primary); }
+.sheets-stat-card.total .sheets-stat-num { color: var(--primary); }
+.sheets-stat-card.progress svg { color: var(--warn, #d97706); }
+.sheets-stat-card.done svg { color: var(--success, #16a34a); }
+.sheets-stat-card.notdone svg { color: var(--danger, #dc2626); }
+.sheets-stat-card.sign svg { color: var(--primary); }
+.sheets-table .col-extra {
+  width: 150px;
+  min-width: 130px;
+}
 .sheets-table-wrap {
   flex: 1 1 auto;
   min-height: 0;

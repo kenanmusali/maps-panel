@@ -16,6 +16,10 @@ import { getFile as githubGet } from './github.js';
 const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
 
+// Extra hand-typed fields shown only for the pdfs / templates sheets
+// (Normativ Sənədlər / Şablonlar): sənədin növü, nəşr, təsdiq tarixi, qərar/protokol.
+export const EXTRA_FIELDS = ['docType', 'edition', 'approvalDate', 'protocol'];
+
 export const SHEET_KINDS = {
   diagrams: {
     sheetsRel: 'diagrams/sheets.json',
@@ -76,7 +80,9 @@ function normalizeRow(row) {
   const itemId = row.itemId != null
     ? row.itemId
     : (row.processId != null ? row.processId : null);
-  return { ...row, itemId, processId: itemId };
+  const extras = {};
+  for (const f of EXTRA_FIELDS) extras[f] = typeof row[f] === 'string' ? row[f] : (row[f] || '');
+  return { ...row, ...extras, itemId, processId: itemId };
 }
 
 export async function readSheets(kind) {
@@ -223,7 +229,7 @@ export async function backfillFromProcesses(user) {
   return backfillFromIndex('diagrams', user);
 }
 
-export async function createSheetRow(kind, { title, subtitle, status, strukturAdi }, user) {
+export async function createSheetRow(kind, { title, subtitle, status, strukturAdi, ...rest }, user) {
   assertKind(kind);
   // Empty title allowed — plus button must work even when fields are blank.
   const name = title != null ? String(title).trim() : '';
@@ -238,6 +244,9 @@ export async function createSheetRow(kind, { title, subtitle, status, strukturAd
     itemId: null,
     processId: null
   };
+  for (const f of EXTRA_FIELDS) {
+    if (typeof rest[f] === 'string') item[f] = rest[f];
+  }
   if (item.status == null) delete item.status;
   sheets.items = [...sheets.items, item];
   await writeSheets(kind, sheets, `Create ${kind} sheet row ${item.id}`, user);
@@ -256,6 +265,9 @@ export async function updateSheetRow(kind, id, patch, user) {
   if (typeof patch.title === 'string') row.title = patch.title; // allow empty
   if (typeof patch.subtitle === 'string') row.subtitle = patch.subtitle;
   if (typeof patch.strukturAdi === 'string') row.strukturAdi = patch.strukturAdi;
+  for (const f of EXTRA_FIELDS) {
+    if (typeof patch[f] === 'string') row[f] = patch[f];
+  }
   if (patch.status !== undefined) {
     const st = normalizeStatus(patch.status);
     if (st === null) delete row.status;
