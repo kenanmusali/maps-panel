@@ -768,7 +768,7 @@ export default function SheetsPage({
                 <Ban size={18} />
                 <span className="sheets-stat-text">
                   <span className="sheets-stat-num">{stats.nostatus}</span>
-                  <span className="sheets-stat-label">{tByText('Ləğv edilmiş')}</span>
+                  <span className="sheets-stat-label">{t('status.none', 'Ləğv edilmiş')}</span>
                 </span>
               </button>
             )}
@@ -817,7 +817,7 @@ export default function SheetsPage({
                             onClick={handleClearAll}
                           >
                             <span className="sheets-col-n-label">№</span>
-                            <Trash2 size={14} className="sheets-col-n-trash" aria-hidden />
+                            <Trash2 size={12} strokeWidth={2.25} className="sheets-col-n-trash" aria-hidden />
                           </button>
                         ) : (
                           '№'

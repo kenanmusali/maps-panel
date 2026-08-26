@@ -64,12 +64,17 @@ function colLetter(n) {
 
 function cellStr(v) {
   if (v == null) return '';
+  let s;
   if (typeof v === 'number' && Number.isFinite(v)) {
     // Excel date serials (e.g. 46260) — leave as plain number string; caller
     // decides whether to treat as date. Titles/codes stay numeric-as-text.
-    return String(v);
+    s = String(v);
+  } else {
+    s = String(v).trim();
   }
-  return String(v).trim();
+  // Treat Excel placeholders as empty — don't import "N / A" into cells.
+  if (/^n\s*\/\s*a$/i.test(s) || /^n\/?a$/i.test(s) || s.toLowerCase() === 'na') return '';
+  return s;
 }
 
 /* ============================ EXPORT ============================ */
