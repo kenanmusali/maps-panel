@@ -6,11 +6,11 @@ import { useLabels } from '../labels/LabelsContext.jsx';
 // diagrams (İş Axışları) and PDF (Normativ Sənədlər) sections.
 //   progress → in progress   done → finished   notdone → not finished
 export const STATUS_META = {
-  progress: { id: 'status.progress', default: 'Müzakirədə', Icon: AlertCircle,        cls: 'progress' },
+  progress: { id: 'status.progress', default: 'Planlaşdırılmış', Icon: AlertCircle,        cls: 'progress' },
 
-  done:     { id: 'status.done', default: 'Təsdiqlənmiş ', Icon: CheckCircle2, cls: 'done' },
+  done:     { id: 'status.done', default: 'Təsdiqlənmişdir ', Icon: CheckCircle2, cls: 'done' },
 
-  notdone:  { id: 'status.notdone', default: 'Təsdqlənməmiş',   Icon: CircleX,  cls: 'notdone' },
+  notdone:  { id: 'status.notdone', default: 'Qaralama',   Icon: CircleX,  cls: 'notdone' },
 
   sign:     { id: 'status.sign', default: 'İmza Prosesində',  Icon: Signature, cls: 'sign' },
 };
@@ -94,7 +94,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
             className={`status-opt none ${!v ? 'active' : ''}`}
             onClick={() => pick(null)}
           >
-            <span>{t('status.none', 'Statussuz')}</span>
+            <span>{t('status.none', 'Levğ edilmiş')}</span>
           </button>
         </div>
       )}

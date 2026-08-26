@@ -585,7 +585,7 @@ export default function SheetsPage({
                 <Ban size={18} />
                 <span className="sheets-stat-text">
                   <span className="sheets-stat-num">{stats.nostatus}</span>
-                  <span className="sheets-stat-label">{tByText('Statussuz')}</span>
+                  <span className="sheets-stat-label">{tByText('Levğ edilmiş')}</span>
                 </span>
               </button>
             )}
