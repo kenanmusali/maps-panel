@@ -6,7 +6,14 @@
 // Import is always ADDITIVE: parsed rows are handed back to the caller as
 // plain objects, which the page then creates one-by-one as new blank sheet
 // rows. Existing rows are never touched or removed.
+//
+// Export is styled to look like a normal Excel sheet (bold dark-blue
+// header with a blue underline, thin gridlines on every cell, white
+// background) — done with exceljs since plain 'xlsx' (SheetJS community)
+// can't write cell styling. Import still uses 'xlsx' — it only needs to
+// read values, not styles.
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 function safeName(s) {
   return (s || 'sheets').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 60);
@@ -16,8 +23,12 @@ function norm(s) {
   return String(s || '').trim().toLowerCase().replace(/[\s_().]+/g, '');
 }
 
+const GRID_BORDER = { style: 'thin', color: { argb: 'FFB7C6D9' } };
+const HEADER_FONT = { bold: true, color: { argb: 'FF1F4E78' }, size: 11 };
+const HEADER_BOTTOM_BORDER = { style: 'medium', color: { argb: 'FF2F6FA8' } };
+
 /* ============================ EXPORT ============================ */
-export function exportSheetToExcel({
+export async function exportSheetToExcel({
   fileTitle,
   sheetName,
   items,
@@ -40,11 +51,43 @@ export function exportSheetToExcel({
     return r;
   });
 
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  ws['!cols'] = header.map((h) => ({ wch: Math.max(14, Math.min(32, h.length + 6)) }));
-  XLSX.utils.book_append_sheet(wb, ws, (sheetName || 'Sheets').slice(0, 31));
-  XLSX.writeFile(wb, `${safeName(fileTitle)}.xlsx`);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet((sheetName || 'Sheets').slice(0, 31), {
+    views: [{ state: 'frozen', ySplit: 1 }]
+  });
+
+  ws.columns = header.map(h => ({ width: Math.max(14, Math.min(32, h.length + 6)) }));
+
+  const headerRow = ws.addRow(header);
+  headerRow.eachCell(cell => {
+    cell.font = HEADER_FONT;
+    cell.alignment = { vertical: 'middle', horizontal: 'left' };
+    cell.border = {
+      top: GRID_BORDER, left: GRID_BORDER, right: GRID_BORDER, bottom: HEADER_BOTTOM_BORDER
+    };
+  });
+
+  for (const r of rows) {
+    const row = ws.addRow(r);
+    row.eachCell((cell, colNumber) => {
+      cell.font = { color: { argb: 'FF1F2937' }, size: 11 };
+      cell.alignment = colNumber === 1
+        ? { vertical: 'middle', horizontal: 'center' }
+        : { vertical: 'middle', horizontal: 'left', wrapText: true };
+      cell.border = { top: GRID_BORDER, left: GRID_BORDER, right: GRID_BORDER, bottom: GRID_BORDER };
+    });
+  }
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName(fileTitle)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /* ============================ IMPORT ============================ */
