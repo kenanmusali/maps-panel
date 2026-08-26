@@ -132,12 +132,12 @@ export default function SheetColumnFilter({
   }
 
   function handleOk() {
-    if (draft.size >= options.length && options.every((v) => draft.has(v))) {
-      onApply(null);
-    } else {
-      onApply(new Set(draft));
-    }
+    const allSelected =
+      draft.size >= options.length && options.every((v) => draft.has(v));
+    const next = allSelected ? null : new Set(draft);
+    // Close popup first so UI feels instant; parent applies filter in a transition.
     onClose?.();
+    queueMicrotask(() => onApply(next));
   }
 
   const popup = open

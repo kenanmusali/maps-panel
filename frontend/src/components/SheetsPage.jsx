@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue, startTransition } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
   LogOut, Loader2, Trash2, ChevronLeft, Download, Upload
@@ -12,6 +12,17 @@ import SheetColumnFilter, {
   BLANK_FILTER_VALUE,
   uniqueColumnValues
 } from './SheetColumnFilter.jsx';
+
+// Survives SheetsPage unmount so revisiting the same kind skips the full
+// blur+progress overlay and paints cached rows immediately.
+const sheetsCache = new Map(); // kind -> items[]
+
+function cacheSheets(kind, items) {
+  sheetsCache.set(kind, Array.isArray(items) ? items : []);
+}
+function cachedSheets(kind) {
+  return sheetsCache.has(kind) ? sheetsCache.get(kind) : null;
+}
 
 // Kinds that get the hand-typed normativ-sənəd fields (sənədin növü, nəşr,
 // təsdiq tarixi, qərar/protokol) — Normativ Sənədlər (pdfs) və Şablonlar.
@@ -64,16 +75,20 @@ function fmtClockDate(d) {
 
 // Excel-style cell editor: a single-line textarea that grows to fit
 // wrapped text instead of clipping/truncating like a plain <input>.
+// Height is only measured while focused — measuring every cell on mount
+// (171×N textareas) caused filter OK / page open to freeze.
 // commitOnBlur=false is used for the DRAFT (new-row) fields — losing focus
 // there must never submit the row, only pressing Enter or the + button.
 function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, commitOnBlur = true }) {
   const localRef = useRef(null);
-  useEffect(() => {
+
+  function fitHeight() {
     const el = localRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
+  }
+
   return (
     <textarea
       ref={(el) => { localRef.current = el; if (cellRef) cellRef.current = el; }}
@@ -82,7 +97,12 @@ function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, c
       value={value || ''}
       placeholder={placeholder}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        onChange(e.target.value);
+        // Grow as the user types (focused); skip for bulk re-renders.
+        requestAnimationFrame(fitHeight);
+      }}
+      onFocus={fitHeight}
       onBlur={(e) => { if (commitOnBlur) onCommit?.(e.target.value); }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -128,15 +148,17 @@ export default function SheetsPage({
   const isViewer = role === 'viewer' || role === 'editor_2';
   const meta = KIND_META[kind] || KIND_META.diagrams;
   const hasExtraFields = EXTRA_FIELD_KINDS.has(kind);
+  const initialCached = cachedSheets(kind);
 
   const [now, setNow] = useState(new Date());
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  // Soft progress overlay (blur + bar) — stays until fetch actually finishes,
-  // instead of a blank "stuck" spinner state.
-  const [loadUi, setLoadUi] = useState({ show: true, pct: 6 });
+  // Soft progress overlay — only on cold load. Cache hits skip it.
+  const [loadUi, setLoadUi] = useState(() => (
+    initialCached ? { show: false, pct: 0 } : { show: true, pct: 6 }
+  ));
 
   // Draft text for not-yet-saved blank rows, keyed by their fixed `order`
   // slot number — NOT by array index. This is what lets a blank stay put
@@ -150,6 +172,9 @@ export default function SheetsPage({
   const [colFilters, setColFilters] = useState({});
   const [openColFilter, setOpenColFilter] = useState(null); // column key or null
   const [importBusy, setImportBusy] = useState(false);
+  // № header: trash only after hovering 4s (avoids accidental reveal)
+  const [nTrashReady, setNTrashReady] = useState(false);
+  const nHoverTimerRef = useRef(null);
   const committingRef = useRef(new Set());
   const importInputRef = useRef(null);
 
@@ -158,10 +183,15 @@ export default function SheetsPage({
     return () => clearInterval(id);
   }, []);
 
-  const isLoading = loading || importBusy || busy;
+  useEffect(() => () => {
+    if (nHoverTimerRef.current) clearTimeout(nHoverTimerRef.current);
+  }, []);
+
+  // Overlay only for cold load / import / bulk busy — not silent background refresh.
+  const showLoadOverlay = (loading && !cachedSheets(kind)) || importBusy || busy;
 
   useEffect(() => {
-    if (isLoading) {
+    if (showLoadOverlay) {
       setLoadUi((u) => ({ show: true, pct: Math.max(u.pct > 0 && u.pct < 100 ? u.pct : 6, 6) }));
       const id = setInterval(() => {
         setLoadUi((u) => {
@@ -172,26 +202,43 @@ export default function SheetsPage({
       }, 220);
       return () => clearInterval(id);
     }
-    // Request finished → fill bar, then dismiss overlay.
     setLoadUi((u) => (u.show ? { show: true, pct: 100 } : u));
-    const t = setTimeout(() => setLoadUi({ show: false, pct: 0 }), 420);
+    const t = setTimeout(() => setLoadUi({ show: false, pct: 0 }), 280);
     return () => clearTimeout(t);
-  }, [isLoading]);
+  }, [showLoadOverlay]);
 
-  async function load() {
-    setLoading(true);
-    setError('');
+  async function load({ silent = false } = {}) {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
     try {
       const data = await api.listSheets(kind);
-      setItems(Array.isArray(data?.items) ? data.items : []);
+      const list = Array.isArray(data?.items) ? data.items : [];
+      cacheSheets(kind, list);
+      setItems(list);
+      setError('');
     } catch (e) {
-      setError(e.message || 'Yüklənmədi');
+      if (!silent || !cachedSheets(kind)) {
+        setError(e.message || 'Yüklənmədi');
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, [kind]);
+  useEffect(() => {
+    const hit = cachedSheets(kind);
+    if (hit) {
+      setItems(hit);
+      setLoading(false);
+      setLoadUi({ show: false, pct: 0 });
+      // Quiet refresh — keep showing cached rows, no blur overlay.
+      load({ silent: true });
+    } else {
+      load({ silent: false });
+    }
+  }, [kind]);
 
   // Reset per-sheet blank-row bookkeeping whenever the sheet kind changes.
   useEffect(() => {
@@ -199,6 +246,7 @@ export default function SheetsPage({
     setHiddenBlankOrders(new Set());
     setColFilters({});
     setOpenColFilter(null);
+    setNTrashReady(false);
   }, [kind]);
 
   const maxOrder = useMemo(
@@ -279,15 +327,20 @@ export default function SheetsPage({
 
   // Status cards + column filters hide real rows only — blank rows always
   // stay visible so there's somewhere to type.
+  // Deferred so filter OK can close the popup immediately without waiting
+  // for the full table to re-filter/re-render (~171 rows).
+  const deferredColFilters = useDeferredValue(colFilters);
+  const deferredStatusFilter = useDeferredValue(statusFilter);
+
   const filteredDisplayRows = useMemo(() => {
-    const activeCols = Object.entries(colFilters).filter(([, set]) => set != null);
-    if (!statusFilter && activeCols.length === 0) return displayRows;
+    const activeCols = Object.entries(deferredColFilters).filter(([, set]) => set != null);
+    if (!deferredStatusFilter && activeCols.length === 0) return displayRows;
     return displayRows.filter(r => {
       if (r.isBlank) return true;
-      if (statusFilter) {
-        if (statusFilter === 'nostatus') {
+      if (deferredStatusFilter) {
+        if (deferredStatusFilter === 'nostatus') {
           if (r.row.status) return false;
-        } else if (r.row.status !== statusFilter) {
+        } else if (r.row.status !== deferredStatusFilter) {
           return false;
         }
       }
@@ -296,18 +349,30 @@ export default function SheetsPage({
       }
       return true;
     });
-  }, [displayRows, statusFilter, colFilters, colValueGetters]);
+  }, [displayRows, deferredStatusFilter, deferredColFilters, colValueGetters]);
 
   const applyColFilter = useCallback((key, next) => {
-    setColFilters(prev => {
-      const cp = { ...prev };
-      if (next == null) delete cp[key];
-      else cp[key] = next;
-      return cp;
+    startTransition(() => {
+      setColFilters(prev => {
+        const cp = { ...prev };
+        if (next == null) delete cp[key];
+        else cp[key] = next;
+        return cp;
+      });
     });
   }, []);
 
   const closeColFilter = useCallback(() => setOpenColFilter(null), []);
+
+  function armNTrash() {
+    if (nHoverTimerRef.current) clearTimeout(nHoverTimerRef.current);
+    nHoverTimerRef.current = setTimeout(() => setNTrashReady(true), 4000);
+  }
+  function disarmNTrash() {
+    if (nHoverTimerRef.current) clearTimeout(nHoverTimerRef.current);
+    nHoverTimerRef.current = null;
+    setNTrashReady(false);
+  }
 
   function renderColHeader(key, label, className) {
     const opts = colOptions[key] || [];
@@ -375,7 +440,11 @@ export default function SheetsPage({
           order,
           ...(hasExtraFields ? blank.extra : {})
         });
-        setItems(prev => [...prev, row]);
+        setItems(prev => {
+          const next = [...prev, row];
+          cacheSheets(kind, next);
+          return next;
+        });
         setBlankDrafts(prev => {
           const cp = { ...prev };
           delete cp[order];
@@ -412,13 +481,21 @@ export default function SheetsPage({
 
   async function patchRow(id, patch) {
     if (!isAdmin) return;
-    setItems(prev => prev.map(x => Number(x.id) === Number(id) ? { ...x, ...patch } : x));
+    setItems(prev => {
+      const next = prev.map(x => Number(x.id) === Number(id) ? { ...x, ...patch } : x);
+      cacheSheets(kind, next);
+      return next;
+    });
     try {
       const updated = await api.updateSheet(kind, id, patch);
-      setItems(prev => prev.map(x => Number(x.id) === Number(id) ? updated : x));
+      setItems(prev => {
+        const next = prev.map(x => Number(x.id) === Number(id) ? updated : x);
+        cacheSheets(kind, next);
+        return next;
+      });
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Yenilənmədi'));
-      await load();
+      await load({ silent: true });
     }
   }
 
@@ -427,7 +504,11 @@ export default function SheetsPage({
     if (!confirm('Bu sətir Sheets-dən silinsin? (Əsas siyahıya toxunmur)')) return;
     try {
       await api.deleteSheet(kind, id);
-      setItems(prev => prev.filter(x => Number(x.id) !== Number(id)));
+      setItems(prev => {
+        const next = prev.filter(x => Number(x.id) !== Number(id));
+        cacheSheets(kind, next);
+        return next;
+      });
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
     }
@@ -560,7 +641,11 @@ export default function SheetsPage({
         });
         created.push(row);
       }
-      setItems(prev => [...prev, ...created]);
+      setItems(prev => {
+        const next = [...prev, ...created];
+        cacheSheets(kind, next);
+        return next;
+      });
       alert(`${created.length} sətir əlavə edildi. Mövcud sətirlər saxlanıldı.`);
     } catch (err) {
       alert('Xəta: ' + (err.message || 'İdxal edilmədi'));
@@ -606,7 +691,7 @@ export default function SheetsPage({
     setBusy(true);
     try {
       await api.clearLinkedSheets(kind);
-      await load();
+      await load({ silent: true });
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
     } finally {
@@ -623,10 +708,10 @@ export default function SheetsPage({
       for (const row of toDelete) {
         await api.deleteSheet(kind, row.id);
       }
-      await load();
+      await load({ silent: true });
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
-      await load();
+      await load({ silent: true });
     } finally {
       setBusy(false);
     }
@@ -641,15 +726,17 @@ export default function SheetsPage({
     setBusy(true);
     try {
       await api.clearAllSheets(kind);
+      cacheSheets(kind, []);
       setItems([]);
       setBlankDrafts({});
       setHiddenBlankOrders(new Set());
       setColFilters({});
       setOpenColFilter(null);
       setStatusFilter(null);
+      setNTrashReady(false);
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
-      await load();
+      await load({ silent: true });
     } finally {
       setBusy(false);
     }
@@ -810,11 +897,21 @@ export default function SheetsPage({
                         {isAdmin && items.length > 0 ? (
                           <button
                             type="button"
-                            className="sheets-col-n-clear"
-                            title={tByText('Hamısını sil')}
-                            aria-label={tByText('Hamısını sil')}
+                            className={`sheets-col-n-clear ${nTrashReady ? 'trash-ready' : ''}`}
+                            title={nTrashReady ? tByText('Hamısını sil') : '№'}
+                            aria-label={nTrashReady ? tByText('Hamısını sil') : '№'}
                             disabled={busy || importBusy || loadUi.show}
-                            onClick={handleClearAll}
+                            onMouseEnter={armNTrash}
+                            onMouseLeave={disarmNTrash}
+                            onFocus={armNTrash}
+                            onBlur={disarmNTrash}
+                            onClick={(e) => {
+                              if (!nTrashReady) {
+                                e.preventDefault();
+                                return;
+                              }
+                              handleClearAll();
+                            }}
                           >
                             <span className="sheets-col-n-label">№</span>
                             <Trash2 size={12} strokeWidth={2.25} className="sheets-col-n-trash" aria-hidden />

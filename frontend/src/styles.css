@@ -3003,15 +3003,25 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 }
 .sheets-col-n-clear:hover .sheets-col-n-label,
 .sheets-col-n-clear:focus-visible .sheets-col-n-label {
-  opacity: 0;
+  /* Stay on № until 4s hover arms trash-ready */
+  opacity: 1;
 }
 .sheets-col-n-clear:hover .sheets-col-n-trash,
 .sheets-col-n-clear:focus-visible .sheets-col-n-trash {
+  opacity: 0;
+}
+.sheets-col-n-clear.trash-ready .sheets-col-n-label {
+  opacity: 0;
+}
+.sheets-col-n-clear.trash-ready .sheets-col-n-trash {
   opacity: 1;
 }
 .sheets-col-n-clear:hover,
 .sheets-col-n-clear:focus-visible {
   background: transparent;
+}
+.sheets-col-n-clear.trash-ready:hover,
+.sheets-col-n-clear.trash-ready:focus-visible {
   color: var(--danger, #dc2626);
 }
 .sheets-col-n-clear:disabled {
@@ -3102,6 +3112,7 @@ textarea.sheets-cell-input {
   word-break: break-word;
   min-height: 38px;
   outline: none;
+  field-sizing: content;
 }
 textarea.sheets-cell-input:hover { background: var(--bg-soft); }
 textarea.sheets-cell-input:focus {
