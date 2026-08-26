@@ -1089,16 +1089,16 @@ export default function Home({ onOpen, onLogout, onBack, onOpenSheets, focusProc
           onClose={() => setModal(null)} onSave={saveGroupRename} />
       )}
       {modal?.type === 'diagram-create' && (
-        <NameModal heading="Yeni diaqram" nameLabel="Diaqram adı" withSubtitle
+        <NameModal heading="Yeni diaqram" nameLabel="İş axışının adı" withSubtitle
           withGroup groups={groups.filter(g => !isTempId(g.id))} groupId0={modal.groupId}
-          namePlaceholder="Əsas ad" subtitlePlaceholder="Qısa ikinci ad (məcburi deyil)"
+          namePlaceholder="Əsas ad" subtitlePlaceholder="Qısa İş axışının nömrəsi (məcburi deyil)"
           saveLabel="Yarat və aç"
           sheetOptions={sheetOptions}
           withImport onImport={importDiagramExcel} onImportJson={importDiagramJson} onTemplate={downloadTemplate}
           onClose={() => setModal(null)} onSave={saveDiagramCreate} />
       )}
       {modal?.type === 'diagram-edit' && (
-        <NameModal heading="Diaqramı redaktə et" nameLabel="Diaqram adı" withSubtitle
+        <NameModal heading="Diaqramı redaktə et" nameLabel="İş axışının adı" withSubtitle
           withGroup groups={groups.filter(g => !isTempId(g.id))} groupId0={modal.proc.groupId}
           name0={modal.proc.title || ''} subtitle0={modal.proc.subtitle || ''}
           onClose={() => setModal(null)} onSave={saveDiagramEdit} />

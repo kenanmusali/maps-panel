@@ -95,9 +95,9 @@ export default function PdfFormModal({ mode, pdf, groups = [], defaultGroupId, o
           </div>
 
           <div className="pdf-field">
-            <label>İkinci ad (qısa)</label>
+            <label>İş axışının nömrəsi</label>
             <input type="text" value={subtitle} onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="Qısa ikinci ad (məcburi deyil)" />
+              placeholder="Qısa İş axışının nömrəsi (məcburi deyil)" />
           </div>
 
           <div className="pdf-field">

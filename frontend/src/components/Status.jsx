@@ -8,11 +8,11 @@ import { useLabels } from '../labels/LabelsContext.jsx';
 export const STATUS_META = {
   progress: { id: 'status.progress', default: 'Planlaşdırılmış', Icon: AlertCircle,        cls: 'progress' },
 
-  done:     { id: 'status.done', default: 'Təsdiqlənmişdir ', Icon: CheckCircle2, cls: 'done' },
+  notdone:  { id: 'status.notdone', default: 'Müzakirədədir',   Icon: CircleX,  cls: 'notdone' },
+  sign:     { id: 'status.sign', default: 'İmza prosesindədir',  Icon: Signature, cls: 'sign' },
+  done:     { id: 'status.done', default: 'Təsdiqlənmiş ', Icon: CheckCircle2, cls: 'done' },
 
-  notdone:  { id: 'status.notdone', default: 'Qaralama',   Icon: CircleX,  cls: 'notdone' },
 
-  sign:     { id: 'status.sign', default: 'İmza Prosesində',  Icon: Signature, cls: 'sign' },
 };
 
 export const STATUS_ORDER = ['progress', 'done', 'notdone', 'sign'];

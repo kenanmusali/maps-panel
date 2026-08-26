@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LogoFull } from './Logo.jsx';
 import {
   LogOut, Loader2, Trash2, ChevronLeft, Download, Upload
@@ -8,6 +8,10 @@ import { api } from '../api/client.js';
 import { StatusControl, STATUS_META, STATUS_ORDER } from './Status.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
 import { exportSheetToExcel, importSheetRowsFromExcel } from './sheetsExcel.js';
+import SheetColumnFilter, {
+  BLANK_FILTER_VALUE,
+  uniqueColumnValues
+} from './SheetColumnFilter.jsx';
 
 // Kinds that get the hand-typed normativ-sənəd fields (sənədin növü, nəşr,
 // təsdiq tarixi, qərar/protokol) — Normativ Sənədlər (pdfs) və Şablonlar.
@@ -95,7 +99,7 @@ const KIND_META = {
   diagrams: {
     title: 'Sheets',
     sub: 'Diaqram kataloqu — İş Axışlarından ayrıca',
-    namePh: 'Yeni diaqram adı…',
+    namePh: 'Yeni İş axışının adı…',
     subPh: 'İkinci ad…'
   },
   pdfs: {
@@ -130,6 +134,9 @@ export default function SheetsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Soft progress overlay (blur + bar) — stays until fetch actually finishes,
+  // instead of a blank "stuck" spinner state.
+  const [loadUi, setLoadUi] = useState({ show: true, pct: 6 });
 
   // Draft text for not-yet-saved blank rows, keyed by their fixed `order`
   // slot number — NOT by array index. This is what lets a blank stay put
@@ -139,6 +146,9 @@ export default function SheetsPage({
   // Never lets the count of visible blanks hit zero — see removeBlankSlot.
   const [hiddenBlankOrders, setHiddenBlankOrders] = useState(() => new Set());
   const [statusFilter, setStatusFilter] = useState(null); // null | 'progress'|'done'|'notdone'|'sign'|'nostatus'
+  // Excel-style per-column filters: key → Set of allowed values (null = show all)
+  const [colFilters, setColFilters] = useState({});
+  const [openColFilter, setOpenColFilter] = useState(null); // column key or null
   const [importBusy, setImportBusy] = useState(false);
   const committingRef = useRef(new Set());
   const importInputRef = useRef(null);
@@ -147,6 +157,26 @@ export default function SheetsPage({
     const id = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  const isLoading = loading || importBusy || busy;
+
+  useEffect(() => {
+    if (isLoading) {
+      setLoadUi((u) => ({ show: true, pct: Math.max(u.pct > 0 && u.pct < 100 ? u.pct : 6, 6) }));
+      const id = setInterval(() => {
+        setLoadUi((u) => {
+          if (!u.show || u.pct >= 90) return u;
+          const bump = 3 + Math.random() * 9;
+          return { show: true, pct: Math.min(90, u.pct + bump) };
+        });
+      }, 220);
+      return () => clearInterval(id);
+    }
+    // Request finished → fill bar, then dismiss overlay.
+    setLoadUi((u) => (u.show ? { show: true, pct: 100 } : u));
+    const t = setTimeout(() => setLoadUi({ show: false, pct: 0 }), 420);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   async function load() {
     setLoading(true);
@@ -167,6 +197,8 @@ export default function SheetsPage({
   useEffect(() => {
     setBlankDrafts({});
     setHiddenBlankOrders(new Set());
+    setColFilters({});
+    setOpenColFilter(null);
   }, [kind]);
 
   const maxOrder = useMemo(
@@ -212,16 +244,94 @@ export default function SheetsPage({
     [displayRows]
   );
 
-  // Status filter only ever hides real rows — blank rows have no status
-  // yet, and always stay visible so there's somewhere to type.
+  const colValueGetters = useMemo(() => {
+    const labelStatus = (key) => {
+      const m = STATUS_META[key];
+      return m ? t(m.id, m.default) : '';
+    };
+    const map = {
+      title: (row) => row.title,
+      strukturAdi: (row) => row.strukturAdi,
+      subtitle: (row) => row.subtitle,
+      status: (row) => (row.status ? labelStatus(row.status) : ''),
+      date: (row) => (row.date ? fmtDate(row.date) : '')
+    };
+    if (hasExtraFields) {
+      for (const f of EXTRA_FIELDS) map[f.key] = (row) => row[f.key];
+    }
+    return map;
+  }, [hasExtraFields, t]);
+
+  const colOptions = useMemo(() => {
+    const out = {};
+    for (const [key, get] of Object.entries(colValueGetters)) {
+      out[key] = uniqueColumnValues(items, get);
+    }
+    return out;
+  }, [items, colValueGetters]);
+
+  function cellFilterValue(row, key) {
+    const get = colValueGetters[key];
+    if (!get) return BLANK_FILTER_VALUE;
+    const raw = get(row);
+    return raw == null || String(raw).trim() === '' ? BLANK_FILTER_VALUE : String(raw).trim();
+  }
+
+  // Status cards + column filters hide real rows only — blank rows always
+  // stay visible so there's somewhere to type.
   const filteredDisplayRows = useMemo(() => {
-    if (!statusFilter) return displayRows;
+    const activeCols = Object.entries(colFilters).filter(([, set]) => set != null);
+    if (!statusFilter && activeCols.length === 0) return displayRows;
     return displayRows.filter(r => {
       if (r.isBlank) return true;
-      if (statusFilter === 'nostatus') return !r.row.status;
-      return r.row.status === statusFilter;
+      if (statusFilter) {
+        if (statusFilter === 'nostatus') {
+          if (r.row.status) return false;
+        } else if (r.row.status !== statusFilter) {
+          return false;
+        }
+      }
+      for (const [key, allowed] of activeCols) {
+        if (!allowed.has(cellFilterValue(r.row, key))) return false;
+      }
+      return true;
     });
-  }, [displayRows, statusFilter]);
+  }, [displayRows, statusFilter, colFilters, colValueGetters]);
+
+  const applyColFilter = useCallback((key, next) => {
+    setColFilters(prev => {
+      const cp = { ...prev };
+      if (next == null) delete cp[key];
+      else cp[key] = next;
+      return cp;
+    });
+  }, []);
+
+  const closeColFilter = useCallback(() => setOpenColFilter(null), []);
+
+  function renderColHeader(key, label, className) {
+    const opts = colOptions[key] || [];
+    return (
+      <th key={key} className={className}>
+        <div className="sheets-th-inner">
+          <span className="sheets-th-label">{label}</span>
+          <SheetColumnFilter
+            options={opts}
+            applied={colFilters[key] || null}
+            open={openColFilter === key}
+            onToggleOpen={() => setOpenColFilter(prev => (prev === key ? null : key))}
+            onApply={(set) => applyColFilter(key, set)}
+            onClose={closeColFilter}
+            searchPlaceholder={tByText('Search')}
+            selectAllLabel={tByText('(Select All)')}
+            blankLabel={tByText('(Boş)')}
+            okLabel={tByText('OK')}
+            cancelLabel={tByText('Cancel')}
+          />
+        </div>
+      </th>
+    );
+  }
 
   function blankHasContent(b) {
     return !!(
@@ -546,12 +656,13 @@ export default function SheetsPage({
           </div>
         </div>
 
-        {!loading && !error && (
+        {!error && (
           <div className="sheets-stats">
             <button
               type="button"
               className={`sheets-stat-card total ${!statusFilter ? 'active' : ''}`}
               onClick={() => setStatusFilter(null)}
+              disabled={loadUi.show}
             >
               <LayoutGrid size={18} />
               <span className="sheets-stat-text">
@@ -567,6 +678,7 @@ export default function SheetsPage({
                   key={k}
                   className={`sheets-stat-card ${m.cls} ${statusFilter === k ? 'active' : ''}`}
                   onClick={() => toggleFilter(k)}
+                  disabled={loadUi.show}
                 >
                   <m.Icon size={18} />
                   <span className="sheets-stat-text">
@@ -581,6 +693,7 @@ export default function SheetsPage({
                 type="button"
                 className={`sheets-stat-card nostatus ${statusFilter === 'nostatus' ? 'active' : ''}`}
                 onClick={() => toggleFilter('nostatus')}
+                disabled={loadUi.show}
               >
                 <Ban size={18} />
                 <span className="sheets-stat-text">
@@ -592,29 +705,46 @@ export default function SheetsPage({
           </div>
         )}
 
-        <div className="sheets-table-wrap">
-          {loading && (
-            <div className="empty-state"><Loader2 size={20} className="spin" />Yüklənir...</div>
+        <div className={`sheets-table-wrap ${loadUi.show ? 'is-loading' : ''}`}>
+          {loadUi.show && (
+            <div className="sheets-load-overlay" aria-busy="true" aria-live="polite">
+              <div className="sheets-load-card">
+                <div className="sheets-load-bar">
+                  <div
+                    className="sheets-load-bar-fill"
+                    style={{ width: `${Math.round(loadUi.pct)}%` }}
+                  />
+                </div>
+                <div className="sheets-load-label">
+                  {importBusy
+                    ? tByText('İdxal olunur…')
+                    : busy
+                      ? tByText('Gözləyin…')
+                      : tByText('Yüklənir…')}
+                  <span className="sheets-load-pct">{Math.round(loadUi.pct)}%</span>
+                </div>
+              </div>
+            </div>
           )}
           {error && !loading && (
             <div className="empty-state error">{error}</div>
           )}
 
-          {!loading && !error && (
+          {!error && (
             <>
               <div className="sheets-table-scroll">
                 <table className="sheets-table">
                   <thead>
                     <tr>
                       <th className="col-n">№</th>
-                      <th className="col-title">{tByText('Diaqram adı')}</th>
-                      <th className="col-struktur">{tByText('Struktur adı')}</th>
-                      <th className="col-sub">{tByText('İkinci ad (qısa)')}</th>
-                      {hasExtraFields && EXTRA_FIELDS.map(f => (
-                        <th className="col-extra" key={f.key}>{tByText(f.label)}</th>
-                      ))}
-                      {withStatus && <th className="col-status">{tByText('Status')}</th>}
-                      <th className="col-date">{tByText('Date')}</th>
+                      {renderColHeader('title', tByText('İş axışının adı'), 'col-title')}
+                      {renderColHeader('strukturAdi', tByText('Struktur adı'), 'col-struktur')}
+                      {renderColHeader('subtitle', tByText('İş axışının nömrəsi'), 'col-sub')}
+                      {hasExtraFields && EXTRA_FIELDS.map(f =>
+                        renderColHeader(f.key, tByText(f.label), 'col-extra')
+                      )}
+                      {withStatus && renderColHeader('status', tByText('Status'), 'col-status')}
+                      {renderColHeader('date', tByText('Date'), 'col-date')}
                       {isAdmin && <th className="col-act" aria-label="Actions" />}
                     </tr>
                   </thead>

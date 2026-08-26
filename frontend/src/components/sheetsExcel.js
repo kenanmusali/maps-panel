@@ -27,6 +27,36 @@ const GRID_BORDER = { style: 'thin', color: { argb: 'FFB7C6D9' } };
 const HEADER_FONT = { bold: true, color: { argb: 'FF1F4E78' }, size: 11 };
 const HEADER_BOTTOM_BORDER = { style: 'medium', color: { argb: 'FF2F6FA8' } };
 
+// Excel column width ≈ character count. Cap so long titles wrap a little
+// instead of blowing past one landscape A4 page; floor so short headers
+// don't leave unused page space when printing / Save as PDF.
+function measureColWidth(headerLabel, colIndex, dataRows) {
+  let maxLen = String(headerLabel || '').length;
+  for (const r of dataRows) {
+    const v = r[colIndex];
+    if (v == null || v === '') continue;
+    maxLen = Math.max(maxLen, String(v).length);
+  }
+  // № is tiny; "Ad" (title) gets the most room; other fields mid-range.
+  const isNo = colIndex === 0;
+  const isTitle = colIndex === 1;
+  const minW = isNo ? 5 : isTitle ? 28 : 14;
+  const maxW = isNo ? 6 : isTitle ? 72 : 36;
+  return Math.max(minW, Math.min(maxW, maxLen + 2));
+}
+
+function colLetter(n) {
+  // 1-based → A, B, … Z, AA…
+  let s = '';
+  let x = n;
+  while (x > 0) {
+    const rem = (x - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
 /* ============================ EXPORT ============================ */
 export async function exportSheetToExcel({
   fileTitle,
@@ -53,15 +83,31 @@ export async function exportSheetToExcel({
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet((sheetName || 'Sheets').slice(0, 31), {
-    views: [{ state: 'frozen', ySplit: 1 }]
+    views: [{ state: 'frozen', ySplit: 1, showGridLines: true }]
   });
 
-  ws.columns = header.map(h => ({ width: Math.max(14, Math.min(32, h.length + 6)) }));
+  ws.columns = header.map((h, i) => ({ width: measureColWidth(h, i, rows) }));
+
+  // Landscape + fit-to-width so Save as PDF uses the page instead of a
+  // skinny table with a huge empty margin on the right.
+  const lastCol = colLetter(header.length);
+  const lastRow = 1 + rows.length;
+  ws.pageSetup = {
+    paperSize: 9, // A4
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+  };
+  ws.pageSetup.printArea = `A1:${lastCol}${Math.max(lastRow, 1)}`;
 
   const headerRow = ws.addRow(header);
+  headerRow.height = 22;
   headerRow.eachCell(cell => {
     cell.font = HEADER_FONT;
-    cell.alignment = { vertical: 'middle', horizontal: 'left' };
+    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     cell.border = {
       top: GRID_BORDER, left: GRID_BORDER, right: GRID_BORDER, bottom: HEADER_BOTTOM_BORDER
     };
@@ -71,9 +117,14 @@ export async function exportSheetToExcel({
     const row = ws.addRow(r);
     row.eachCell((cell, colNumber) => {
       cell.font = { color: { argb: 'FF1F2937' }, size: 11 };
+      // Wrap only when the cell is long enough to need it — short cells
+      // stay single-line so rows don't balloon with empty vertical space.
+      const text = String(cell.value ?? '');
+      const colW = ws.getColumn(colNumber).width || 14;
+      const needsWrap = text.length > colW;
       cell.alignment = colNumber === 1
-        ? { vertical: 'middle', horizontal: 'center' }
-        : { vertical: 'middle', horizontal: 'left', wrapText: true };
+        ? { vertical: 'middle', horizontal: 'center', wrapText: false }
+        : { vertical: 'middle', horizontal: 'left', wrapText: needsWrap };
       cell.border = { top: GRID_BORDER, left: GRID_BORDER, right: GRID_BORDER, bottom: GRID_BORDER };
     });
   }

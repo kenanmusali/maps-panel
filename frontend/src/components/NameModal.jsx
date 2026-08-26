@@ -35,7 +35,7 @@ export default function NameModal({
   heading,
   nameLabel = 'Ad',
   namePlaceholder = '',
-  subtitleLabel = 'İkinci ad (qısa)',
+  subtitleLabel = 'İş axışının nömrəsi',
   subtitlePlaceholder = '',
   withSubtitle = false,
   withGroup = false,
