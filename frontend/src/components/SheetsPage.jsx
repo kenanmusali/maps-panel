@@ -23,11 +23,16 @@ const EXTRA_FIELDS = [
 // the bottom of the sheet. Fresh/near-empty sheets start with a full pool;
 // once you have that many real rows, exactly one blank row trails the last
 // one (fill row 45 → row 46 appears empty, fill 46 → 47 appears, etc).
+//
+// Rows are addressed by a fixed `order` number (their permanent visual
+// position), not by array index. Filling row 5 while rows 2/3 stay empty
+// must NEVER bump row 5 up to close the gap — 2 and 3 stay open for later.
+// Deleting a row (real or blank) just leaves that order number empty; it
+// doesn't renumber anything after it.
 const DEFAULT_BLANK_ROWS = 15;
 
-let blankSeq = 0;
-function makeBlankRow() {
-  return { key: `blank-${++blankSeq}`, title: '', subtitle: '', strukturAdi: '', status: null, extra: {} };
+function emptyDraft() {
+  return { title: '', subtitle: '', strukturAdi: '', status: null, extra: {} };
 }
 
 function fmtDate(iso) {
@@ -126,7 +131,13 @@ export default function SheetsPage({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [pendingBlanks, setPendingBlanks] = useState(() => (isAdmin ? Array.from({ length: DEFAULT_BLANK_ROWS }, makeBlankRow) : []));
+  // Draft text for not-yet-saved blank rows, keyed by their fixed `order`
+  // slot number — NOT by array index. This is what lets a blank stay put
+  // (and keep its own draft text) no matter what happens in other rows.
+  const [blankDrafts, setBlankDrafts] = useState({});
+  // Blank slots the admin explicitly removed from the pool (order numbers).
+  // Never lets the count of visible blanks hit zero — see removeBlankSlot.
+  const [hiddenBlankOrders, setHiddenBlankOrders] = useState(() => new Set());
   const [statusFilter, setStatusFilter] = useState(null); // null | 'progress'|'done'|'notdone'|'sign'|'nostatus'
   const [importBusy, setImportBusy] = useState(false);
   const committingRef = useRef(new Set());
@@ -152,25 +163,65 @@ export default function SheetsPage({
 
   useEffect(() => { load(); }, [kind]);
 
-  // Reset the blank-row pool whenever the sheet kind changes.
+  // Reset per-sheet blank-row bookkeeping whenever the sheet kind changes.
   useEffect(() => {
-    setPendingBlanks(isAdmin ? Array.from({ length: DEFAULT_BLANK_ROWS }, makeBlankRow) : []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, isAdmin]);
+    setBlankDrafts({});
+    setHiddenBlankOrders(new Set());
+  }, [kind]);
 
-  // Keep the trailing blank-row pool topped up: once real rows fill the
-  // default pool, always keep exactly one empty row after the last one.
-  useEffect(() => {
-    if (!isAdmin) return;
-    const desired = Math.max(items.length + 1, DEFAULT_BLANK_ROWS) - items.length;
-    setPendingBlanks(prev => {
-      if (prev.length === desired) return prev;
-      if (prev.length < desired) {
-        return [...prev, ...Array.from({ length: desired - prev.length }, makeBlankRow)];
+  const maxOrder = useMemo(
+    () => items.reduce((m, x) => Math.max(m, Number(x.order) || 0), 0),
+    [items]
+  );
+  // Fresh/near-empty sheets show a full pool of 15 blanks; once real rows
+  // pass that, the pool always ends exactly one blank past the highest
+  // used position (fill row 45 → row 46 appears empty, etc). Gaps that
+  // already exist below that (empty rows 2/3 while 5 is filled) stay put.
+  const totalSlots = Math.max(maxOrder + 1, DEFAULT_BLANK_ROWS);
+
+  const itemsByOrder = useMemo(() => {
+    const m = new Map();
+    for (const row of items) m.set(Number(row.order), row);
+    return m;
+  }, [items]);
+
+  // The single ordered list actually rendered: real rows keep the exact
+  // order slot they were saved with, blanks fill every other slot up to
+  // totalSlots (minus any the admin removed from the pool).
+  const displayRows = useMemo(() => {
+    if (!isAdmin) {
+      return items
+        .slice()
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+        .map(row => ({ order: Number(row.order) || 0, row, isBlank: false }));
+    }
+    const out = [];
+    for (let k = 1; k <= totalSlots; k++) {
+      const real = itemsByOrder.get(k);
+      if (real) {
+        out.push({ order: k, row: real, isBlank: false });
+      } else if (!hiddenBlankOrders.has(k)) {
+        out.push({ order: k, row: blankDrafts[k] || emptyDraft(), isBlank: true });
       }
-      return prev.slice(0, desired);
+    }
+    return out;
+  }, [isAdmin, items, itemsByOrder, totalSlots, hiddenBlankOrders, blankDrafts]);
+
+  const visibleBlankCount = useMemo(
+    () => displayRows.filter(r => r.isBlank).length,
+    [displayRows]
+  );
+
+  // Status filter only ever hides real rows — blank rows have no status
+  // yet, and always stay visible so there's somewhere to type.
+  const filteredDisplayRows = useMemo(() => {
+    if (!statusFilter) return displayRows;
+    return displayRows.filter(r => {
+      if (r.isBlank) return true;
+      if (statusFilter === 'nostatus') return !r.row.status;
+      return r.row.status === statusFilter;
     });
-  }, [items.length, isAdmin]);
+  }, [displayRows, statusFilter]);
 
   function blankHasContent(b) {
     return !!(
@@ -182,34 +233,28 @@ export default function SheetsPage({
     );
   }
 
-  // If the row that was just edited is the last row in the pool and now
-  // has content, immediately append a fresh blank row after it — don't
-  // wait for the server commit (on blur) to top the pool up.
-  function ensureTrailingBlank(rows) {
-    if (rows.length === 0) return rows;
-    const last = rows[rows.length - 1];
-    if (blankHasContent(last)) return [...rows, makeBlankRow()];
-    return rows;
+  function updateBlank(order, field, value) {
+    setBlankDrafts(prev => ({
+      ...prev,
+      [order]: { ...(prev[order] || emptyDraft()), [field]: value }
+    }));
   }
 
-  function updateBlank(key, field, value) {
-    setPendingBlanks(prev => ensureTrailingBlank(
-      prev.map(b => (b.key === key ? { ...b, [field]: value } : b))
-    ));
+  function updateBlankExtra(order, fieldKey, value) {
+    setBlankDrafts(prev => ({
+      ...prev,
+      [order]: {
+        ...(prev[order] || emptyDraft()),
+        extra: { ...((prev[order] || emptyDraft()).extra), [fieldKey]: value }
+      }
+    }));
   }
 
-  function updateBlankExtra(key, fieldKey, value) {
-    setPendingBlanks(prev => ensureTrailingBlank(
-      prev.map(b => (
-        b.key === key ? { ...b, extra: { ...b.extra, [fieldKey]: value } } : b
-      ))
-    ));
-  }
-
-  function commitBlankRow(blank) {
-    if (!isAdmin || committingRef.current.has(blank.key)) return;
+  function commitBlankRow(order, draftOverride) {
+    if (!isAdmin || committingRef.current.has(order)) return;
+    const blank = draftOverride || blankDrafts[order] || emptyDraft();
     if (!blankHasContent(blank)) return;
-    committingRef.current.add(blank.key);
+    committingRef.current.add(order);
     (async () => {
       try {
         const row = await api.createSheet(kind, {
@@ -217,24 +262,42 @@ export default function SheetsPage({
           subtitle: (blank.subtitle || '').trim(),
           strukturAdi: (blank.strukturAdi || '').trim(),
           status: withStatus ? (blank.status || null) : null,
+          order,
           ...(hasExtraFields ? blank.extra : {})
         });
         setItems(prev => [...prev, row]);
-        setPendingBlanks(prev => prev.filter(b => b.key !== blank.key));
+        setBlankDrafts(prev => {
+          const cp = { ...prev };
+          delete cp[order];
+          return cp;
+        });
       } catch (e) {
         alert('Xəta: ' + (e.message || 'Əlavə edilmədi'));
       } finally {
-        committingRef.current.delete(blank.key);
+        committingRef.current.delete(order);
       }
     })();
   }
 
   // Commit a blank row only once focus actually leaves that row — not on
   // every field-to-field tab within the same row.
-  function handleBlankRowBlur(e, blank) {
+  function handleBlankRowBlur(e, order) {
     if (!e.currentTarget.contains(e.relatedTarget)) {
-      commitBlankRow(blank);
+      commitBlankRow(order);
     }
+  }
+
+  // Remove one blank slot from the pool. Always leaves at least one blank
+  // row visible on the sheet so there's somewhere left to type.
+  function removeBlankSlot(order) {
+    if (!isAdmin || visibleBlankCount <= 1) return;
+    setHiddenBlankOrders(prev => new Set(prev).add(order));
+    setBlankDrafts(prev => {
+      if (!(order in prev)) return prev;
+      const cp = { ...prev };
+      delete cp[order];
+      return cp;
+    });
   }
 
   async function patchRow(id, patch) {
@@ -271,12 +334,6 @@ export default function SheetsPage({
     }
     return { total: items.length, byStatus, nostatus };
   }, [items]);
-
-  const filteredItems = useMemo(() => {
-    if (!statusFilter) return items;
-    if (statusFilter === 'nostatus') return items.filter(x => !x.status);
-    return items.filter(x => x.status === statusFilter);
-  }, [items, statusFilter]);
 
   function toggleFilter(key) {
     setStatusFilter(prev => (prev === key ? null : key));
@@ -562,98 +619,171 @@ export default function SheetsPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredItems.map((row, i) => (
-                      <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
-                        <td className="col-n">{i + 1}</td>
-                        <td className="col-title">
-                          {isAdmin ? (
+                    {filteredDisplayRows.map(({ order, row, isBlank }) => (
+                      isBlank ? (
+                        <tr
+                          key={`blank-${order}`}
+                          className="sheet-only sheets-blank-row"
+                          onBlur={(e) => handleBlankRowBlur(e, order)}
+                        >
+                          <td className="col-n">{order}</td>
+                          <td className="col-title">
                             <GridCell
                               value={row.title}
-                              placeholder="—"
-                              onChange={(v) => setItems(prev => prev.map(x =>
-                                Number(x.id) === Number(row.id) ? { ...x, title: v } : x
-                              ))}
-                              onCommit={(v) => {
-                                if (v !== (row.title || '')) patchRow(row.id, { title: v });
-                              }}
+                              placeholder=""
+                              onChange={(v) => updateBlank(order, 'title', v)}
+                              onCommit={() => commitBlankRow(order)}
+                              commitOnBlur={false}
                             />
-                          ) : (
-                            <span className="sheets-cell-text">{row.title || '—'}</span>
-                          )}
-                        </td>
-                        <td className="col-struktur">
-                          {isAdmin ? (
-                            strukturInput(
-                              row.strukturAdi || '',
-                              (v) => setItems(prev => prev.map(x =>
-                                Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
-                              )),
-                              (v) => {
-                                if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
-                              },
-                              tByText('Qrup adı…')
-                            )
-                          ) : (
-                            <span className="sheets-cell-text">{row.strukturAdi || '—'}</span>
-                          )}
-                        </td>
-                        <td className="col-sub">
-                          {isAdmin ? (
+                          </td>
+                          <td className="col-struktur">
+                            <GridCell
+                              value={row.strukturAdi}
+                              placeholder=""
+                              onChange={(v) => updateBlank(order, 'strukturAdi', v)}
+                              onCommit={() => commitBlankRow(order)}
+                              commitOnBlur={false}
+                            />
+                          </td>
+                          <td className="col-sub">
                             <GridCell
                               value={row.subtitle}
-                              placeholder="—"
-                              onChange={(v) => setItems(prev => prev.map(x =>
-                                Number(x.id) === Number(row.id) ? { ...x, subtitle: v } : x
-                              ))}
-                              onCommit={(v) => {
-                                if (v !== (row.subtitle || '')) patchRow(row.id, { subtitle: v });
-                              }}
+                              placeholder=""
+                              onChange={(v) => updateBlank(order, 'subtitle', v)}
+                              onCommit={() => commitBlankRow(order)}
+                              commitOnBlur={false}
                             />
-                          ) : (
-                            <span className="sheets-cell-text">{row.subtitle || '—'}</span>
+                          </td>
+                          {hasExtraFields && EXTRA_FIELDS.map(f => (
+                            <td className="col-extra" key={f.key}>
+                              <GridCell
+                                value={row.extra[f.key]}
+                                placeholder=""
+                                onChange={(v) => updateBlankExtra(order, f.key, v)}
+                                onCommit={() => commitBlankRow(order)}
+                                commitOnBlur={false}
+                              />
+                            </td>
+                          ))}
+                          {withStatus && (
+                            <td className="col-status">
+                              <StatusControl
+                                value={row.status}
+                                editable
+                                onChange={(status) => {
+                                  updateBlank(order, 'status', status);
+                                  commitBlankRow(order, { ...row, status });
+                                }}
+                              />
+                            </td>
                           )}
-                        </td>
-                        {hasExtraFields && EXTRA_FIELDS.map(f => (
-                          <td className="col-extra" key={f.key}>
+                          <td className="col-date">{fmtClockDate(now)}</td>
+                          <td className="col-act">
+                            {visibleBlankCount > 1 && (
+                              <button
+                                type="button"
+                                className="icon-btn sheets-del"
+                                title="Boş sətri sil"
+                                onClick={() => removeBlankSlot(order)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
+                          <td className="col-n">{order}</td>
+                          <td className="col-title">
                             {isAdmin ? (
                               <GridCell
-                                value={row[f.key]}
-                                placeholder={tByText(f.ph)}
+                                value={row.title}
+                                placeholder="—"
                                 onChange={(v) => setItems(prev => prev.map(x =>
-                                  Number(x.id) === Number(row.id) ? { ...x, [f.key]: v } : x
+                                  Number(x.id) === Number(row.id) ? { ...x, title: v } : x
                                 ))}
                                 onCommit={(v) => {
-                                  if (v !== (row[f.key] || '')) patchRow(row.id, { [f.key]: v });
+                                  if (v !== (row.title || '')) patchRow(row.id, { title: v });
                                 }}
                               />
                             ) : (
-                              <span className="sheets-cell-text">{row[f.key] || '—'}</span>
+                              <span className="sheets-cell-text">{row.title || '—'}</span>
                             )}
                           </td>
-                        ))}
-                        {withStatus && (
-                          <td className="col-status">
-                            <StatusControl
-                              value={row.status}
-                              editable={isAdmin && !isViewer}
-                              onChange={(status) => patchRow(row.id, { status })}
-                            />
+                          <td className="col-struktur">
+                            {isAdmin ? (
+                              strukturInput(
+                                row.strukturAdi || '',
+                                (v) => setItems(prev => prev.map(x =>
+                                  Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
+                                )),
+                                (v) => {
+                                  if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
+                                },
+                                tByText('Qrup adı…')
+                              )
+                            ) : (
+                              <span className="sheets-cell-text">{row.strukturAdi || '—'}</span>
+                            )}
                           </td>
-                        )}
-                        <td className="col-date">{fmtDate(row.date)}</td>
-                        {isAdmin && (
-                          <td className="col-act">
-                            <button
-                              type="button"
-                              className="icon-btn sheets-del"
-                              title="Sil"
-                              onClick={() => removeRow(row.id)}
-                            >
-                              <Trash2 size={15} />
-                            </button>
+                          <td className="col-sub">
+                            {isAdmin ? (
+                              <GridCell
+                                value={row.subtitle}
+                                placeholder="—"
+                                onChange={(v) => setItems(prev => prev.map(x =>
+                                  Number(x.id) === Number(row.id) ? { ...x, subtitle: v } : x
+                                ))}
+                                onCommit={(v) => {
+                                  if (v !== (row.subtitle || '')) patchRow(row.id, { subtitle: v });
+                                }}
+                              />
+                            ) : (
+                              <span className="sheets-cell-text">{row.subtitle || '—'}</span>
+                            )}
                           </td>
-                        )}
-                      </tr>
+                          {hasExtraFields && EXTRA_FIELDS.map(f => (
+                            <td className="col-extra" key={f.key}>
+                              {isAdmin ? (
+                                <GridCell
+                                  value={row[f.key]}
+                                  placeholder=""
+                                  onChange={(v) => setItems(prev => prev.map(x =>
+                                    Number(x.id) === Number(row.id) ? { ...x, [f.key]: v } : x
+                                  ))}
+                                  onCommit={(v) => {
+                                    if (v !== (row[f.key] || '')) patchRow(row.id, { [f.key]: v });
+                                  }}
+                                />
+                              ) : (
+                                <span className="sheets-cell-text">{row[f.key] || '—'}</span>
+                              )}
+                            </td>
+                          ))}
+                          {withStatus && (
+                            <td className="col-status">
+                              <StatusControl
+                                value={row.status}
+                                editable={isAdmin && !isViewer}
+                                onChange={(status) => patchRow(row.id, { status })}
+                              />
+                            </td>
+                          )}
+                          <td className="col-date">{fmtDate(row.date)}</td>
+                          {isAdmin && (
+                            <td className="col-act">
+                              <button
+                                type="button"
+                                className="icon-btn sheets-del"
+                                title="Sil"
+                                onClick={() => removeRow(row.id)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      )
                     ))}
                     {items.length === 0 && !isAdmin && (
                       <tr>
@@ -662,74 +792,13 @@ export default function SheetsPage({
                         </td>
                       </tr>
                     )}
-                    {items.length > 0 && filteredItems.length === 0 && (
+                    {items.length > 0 && filteredDisplayRows.every(r => r.isBlank) && (
                       <tr>
                         <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
                           {tByText('Bu filtrə uyğun sətir yoxdur')}
                         </td>
                       </tr>
                     )}
-                    {isAdmin && pendingBlanks.map((blank, bi) => (
-                      <tr
-                        key={blank.key}
-                        className="sheet-only sheets-blank-row"
-                        onBlur={(e) => handleBlankRowBlur(e, blank)}
-                      >
-                        <td className="col-n">{items.length + bi + 1}</td>
-                        <td className="col-title">
-                          <GridCell
-                            value={blank.title}
-                            placeholder={tByText(meta.namePh)}
-                            onChange={(v) => updateBlank(blank.key, 'title', v)}
-                            onCommit={() => commitBlankRow(blank)}
-                            commitOnBlur={false}
-                          />
-                        </td>
-                        <td className="col-struktur">
-                          <GridCell
-                            value={blank.strukturAdi}
-                            placeholder={tByText('Qrup adı…')}
-                            onChange={(v) => updateBlank(blank.key, 'strukturAdi', v)}
-                            onCommit={() => commitBlankRow(blank)}
-                            commitOnBlur={false}
-                          />
-                        </td>
-                        <td className="col-sub">
-                          <GridCell
-                            value={blank.subtitle}
-                            placeholder={tByText(meta.subPh)}
-                            onChange={(v) => updateBlank(blank.key, 'subtitle', v)}
-                            onCommit={() => commitBlankRow(blank)}
-                            commitOnBlur={false}
-                          />
-                        </td>
-                        {hasExtraFields && EXTRA_FIELDS.map(f => (
-                          <td className="col-extra" key={f.key}>
-                            <GridCell
-                              value={blank.extra[f.key]}
-                              placeholder={tByText(f.ph)}
-                              onChange={(v) => updateBlankExtra(blank.key, f.key, v)}
-                              onCommit={() => commitBlankRow(blank)}
-                              commitOnBlur={false}
-                            />
-                          </td>
-                        ))}
-                        {withStatus && (
-                          <td className="col-status">
-                            <StatusControl
-                              value={blank.status}
-                              editable
-                              onChange={(status) => {
-                                updateBlank(blank.key, 'status', status);
-                                commitBlankRow({ ...blank, status });
-                              }}
-                            />
-                          </td>
-                        )}
-                        <td className="col-date">{fmtClockDate(now)}</td>
-                        <td className="col-act">—</td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>

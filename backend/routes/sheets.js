@@ -51,6 +51,7 @@ router.post('/:kind', requireAdmin, async (req, res, next) => {
       subtitle: req.body?.subtitle,
       status: req.body?.status,
       strukturAdi: req.body?.strukturAdi,
+      order: req.body?.order,
       ...pickExtras(req.body)
     }, req.user);
     res.status(201).json(item);

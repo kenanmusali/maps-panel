@@ -2695,10 +2695,10 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-md);
-  box-shadow: var(--sh-xs);
+  background: #ffffff;
+  border: 1px solid #b7c6d9;
+  border-radius: 4px;
+  box-shadow: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -2729,16 +2729,19 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   border-collapse: collapse;
   font-size: 13px;
   table-layout: fixed;
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+  background: #ffffff;
 }
 .sheets-table th {
   text-align: left;
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-secondary);
-  background: var(--bg-soft);
-  padding: 10px 12px;
-  border: 1px solid var(--border-soft);
+  letter-spacing: normal;
+  color: #1f4e78;
+  background: #ffffff;
+  padding: 6px 10px;
+  border: 1px solid #c7d3de;
+  border-bottom: 2px solid #2f6fa8;
   white-space: nowrap;
   position: sticky;
   top: 0;
@@ -2746,21 +2749,21 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 }
 .sheets-table td {
   padding: 0;
-  border: 1px solid var(--border-soft);
+  border: 1px solid #c7d3de;
   vertical-align: middle;
-  color: var(--text-primary);
+  color: #1f2937;
 }
-.sheets-table tr.sheet-only { background: var(--surface); }
-.sheets-table tr.sheets-blank-row { color: var(--text-secondary); }
-.sheets-table tr.sheets-blank-row .col-n { color: var(--text-muted); }
+.sheets-table tr.sheet-only { background: #ffffff; }
+.sheets-table tr.sheets-blank-row { color: #1f2937; }
+.sheets-table tr.sheets-blank-row .col-n { color: #6b7a8c; font-weight: 400; }
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
-.sheets-table .col-n { width: 52px; text-align: center; color: var(--text-muted); font-weight: 600; padding: 10px 8px; }
+.sheets-table .col-n { width: 44px; text-align: center; color: #1f2937; font-weight: 400; padding: 6px 8px; background: #f3f6fa; }
 .sheets-table .col-title { width: 28%; }
 .sheets-table .col-struktur { width: 22%; }
 .sheets-table .col-sub { width: 16%; }
-.sheets-table .col-status { width: 220px; padding: 6px 8px; }
-.sheets-table .col-date { width: 110px; color: var(--text-secondary); white-space: nowrap; padding: 10px 12px; }
-.sheets-table .col-act { width: 48px; text-align: center; padding: 6px; }
+.sheets-table .col-status { width: 220px; padding: 4px 6px; }
+.sheets-table .col-date { width: 110px; color: #1f2937; white-space: nowrap; padding: 6px 10px; }
+.sheets-table .col-act { width: 48px; text-align: center; padding: 4px; }
 .sheets-table .col-status .status-control {
   display: block;
   width: 100%;
@@ -2773,8 +2776,8 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   justify-content: flex-start !important;
   gap: 8px;
   box-sizing: border-box;
-  min-height: 38px;
-  padding: 8px 10px;
+  min-height: 30px;
+  padding: 5px 10px;
   text-align: left;
 }
 .sheets-table .col-status .status-btn-main {
@@ -2804,8 +2807,8 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   justify-content: flex-start;
   gap: 8px;
   box-sizing: border-box;
-  min-height: 38px;
-  padding: 8px 10px;
+  min-height: 30px;
+  padding: 5px 10px;
 }
 /* Excel-style grid cells: the border IS the cell divider — no floating
    rounded input box, no gap. Text wraps to a second line instead of
@@ -2815,15 +2818,15 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   display: block;
   width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 6px 10px;
   font: inherit;
   color: inherit;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 .sheets-cell-text {
   white-space: normal;
   word-break: break-word;
-  color: var(--text-primary);
+  color: #1f2937;
 }
 textarea.sheets-cell-input {
   display: block;
@@ -2834,15 +2837,15 @@ textarea.sheets-cell-input {
   overflow: hidden;
   white-space: pre-wrap;
   word-break: break-word;
-  min-height: 38px;
+  min-height: 30px;
   outline: none;
 }
-textarea.sheets-cell-input:hover { background: var(--bg-soft); }
+textarea.sheets-cell-input:hover { background: #f7f9fb; }
 textarea.sheets-cell-input:focus {
-  background: var(--surface);
+  background: #ffffff;
   box-shadow: inset 0 0 0 2px var(--primary);
 }
-textarea.sheets-cell-input::placeholder { color: var(--text-muted); }
+textarea.sheets-cell-input::placeholder { color: #a3adb8; }
 textarea.sheets-cell-input:disabled { opacity: 0.6; cursor: default; }
 .sheets-struktur {
   display: flex;

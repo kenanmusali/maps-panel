@@ -90,14 +90,25 @@ function normalizeRow(row) {
     : (row.processId != null ? row.processId : null);
   const extras = {};
   for (const f of EXTRA_FIELDS) extras[f] = typeof row[f] === 'string' ? row[f] : (row[f] || '');
-  return { ...row, ...extras, itemId, processId: itemId };
+  const order = Number.isFinite(Number(row.order)) ? Number(row.order) : null;
+  return { ...row, ...extras, itemId, processId: itemId, order };
 }
 
 export async function readSheets(kind) {
   assertKind(kind);
   const file = await mongoGet(sheetsPath(kind));
   const c = file ? file.content : null;
-  const items = (c && Array.isArray(c.items)) ? c.items.map(normalizeRow) : [];
+  let items = (c && Array.isArray(c.items)) ? c.items.map(normalizeRow) : [];
+
+  // Migration: rows created before the `order` field existed don't have a
+  // stable position — backfill using their stored (creation) order once,
+  // so old rows keep their spot instead of colliding with new order numbers.
+  if (items.some(x => x.order == null)) {
+    items = items.map((x, i) => (x.order == null ? { ...x, order: i + 1 } : x));
+    await writeSheets(kind, { items }, `Backfill order for ${kind} sheets`, null);
+  }
+
+  items.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   return { items };
 }
 
@@ -134,6 +145,7 @@ export async function backfillFromIndex(kind, user) {
       const id = Number(p.id);
       return {
         id: i + 1,
+        order: i + 1,
         title: String(p.title || ''),
         subtitle: String(p.subtitle || ''),
         strukturAdi: strukturFor(p),
@@ -238,13 +250,20 @@ export async function backfillFromProcesses(user) {
   return backfillFromIndex('diagrams', user);
 }
 
-export async function createSheetRow(kind, { title, subtitle, status, strukturAdi, ...rest }, user) {
+export async function createSheetRow(kind, { title, subtitle, status, strukturAdi, order, ...rest }, user) {
   assertKind(kind);
   // Empty title allowed — plus button must work even when fields are blank.
   const name = title != null ? String(title).trim() : '';
   const sheets = await readSheets(kind);
+  // `order` is the row's fixed visual position (the blank slot it was typed
+  // into). Rows keep this position forever — filling row 5 while rows 2/3
+  // stay empty must never bump row 5 up to fill the gap. Falls back to
+  // appending after the highest known position when not provided.
+  const maxOrder = sheets.items.reduce((m, x) => Math.max(m, Number(x.order) || 0), 0);
+  const ord = Number.isFinite(Number(order)) && Number(order) > 0 ? Number(order) : maxOrder + 1;
   const item = {
     id: nextId(sheets.items),
+    order: ord,
     title: name,
     subtitle: subtitle != null ? String(subtitle) : '',
     strukturAdi: strukturAdi != null ? String(strukturAdi).trim() : '',
@@ -274,6 +293,7 @@ export async function updateSheetRow(kind, id, patch, user) {
   if (typeof patch.title === 'string') row.title = patch.title; // allow empty
   if (typeof patch.subtitle === 'string') row.subtitle = patch.subtitle;
   if (typeof patch.strukturAdi === 'string') row.strukturAdi = patch.strukturAdi;
+  if (patch.order !== undefined && Number.isFinite(Number(patch.order))) row.order = Number(patch.order);
   for (const f of EXTRA_FIELDS) {
     if (typeof patch[f] === 'string') row[f] = patch[f];
   }
