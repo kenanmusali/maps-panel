@@ -112,6 +112,8 @@ export const api = {
   // Bulk-remove rows that were auto-populated from diagrams/pdfs/templates
   // (old backfill / auto-sync). Hand-typed blank rows are untouched.
   clearLinkedSheets: (kind = 'diagrams') => request('DELETE', `/api/sheets/${kind}/linked`),
+  // Wipe every row in this Sheets catalog
+  clearAllSheets: (kind = 'diagrams') => request('DELETE', `/api/sheets/${kind}/all`),
 
   // Interface-text labels (editor_2 role only writes; everyone reads)
   getLabels: () => request('GET', '/api/labels'),

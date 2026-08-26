@@ -2964,6 +2964,57 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-table tr.sheets-blank-row .col-n { color: var(--text-muted); }
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
 .sheets-table .col-n { width: 52px; text-align: center; color: var(--text-muted); font-weight: 600; padding: 10px 8px; }
+.sheets-col-n-clear {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -4px auto;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sheets-col-n-clear .sheets-col-n-label,
+.sheets-col-n-clear .sheets-col-n-trash {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.sheets-col-n-clear .sheets-col-n-trash {
+  opacity: 0;
+  transform: scale(0.85);
+  color: var(--danger, #dc2626);
+  pointer-events: none;
+}
+.sheets-col-n-clear:hover .sheets-col-n-label,
+.sheets-col-n-clear:focus-visible .sheets-col-n-label {
+  opacity: 0;
+}
+.sheets-col-n-clear:hover .sheets-col-n-trash,
+.sheets-col-n-clear:focus-visible .sheets-col-n-trash {
+  opacity: 1;
+  transform: scale(1);
+}
+.sheets-col-n-clear:hover,
+.sheets-col-n-clear:focus-visible {
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
+}
+.sheets-col-n-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sheets-col-n-clear:disabled:hover .sheets-col-n-label { opacity: 1; }
+.sheets-col-n-clear:disabled:hover .sheets-col-n-trash { opacity: 0; }
 .sheets-table .col-title { width: 28%; }
 .sheets-table .col-struktur { width: 22%; }
 .sheets-table .col-sub { width: 16%; }

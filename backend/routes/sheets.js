@@ -7,6 +7,7 @@ import {
   updateSheetRow,
   deleteSheetRow,
   clearLinkedRows,
+  clearAllRows,
   syncFromItem,
   ALLOWED_STATUS,
   EXTRA_FIELDS
@@ -80,6 +81,15 @@ router.delete('/:kind/linked', requireAdmin, async (req, res, next) => {
   if (!SHEET_KINDS[req.params.kind]) return next();
   try {
     const result = await clearLinkedRows(req.params.kind, req.user);
+    res.json(result);
+  } catch (e) { next(e); }
+});
+
+// Wipe every row in this Sheets catalog.
+router.delete('/:kind/all', requireAdmin, async (req, res, next) => {
+  if (!SHEET_KINDS[req.params.kind]) return next();
+  try {
+    const result = await clearAllRows(req.params.kind, req.user);
     res.json(result);
   } catch (e) { next(e); }
 });

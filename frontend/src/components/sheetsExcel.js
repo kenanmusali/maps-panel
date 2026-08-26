@@ -20,7 +20,12 @@ function safeName(s) {
 }
 
 function norm(s) {
-  return String(s || '').trim().toLowerCase().replace(/[\s_().]+/g, '');
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    // strip spaces, underscores, punctuation — keep letters/digits so
+    // "Diaqram adı", "İş axışının adı", "İkinci ad (qısa)" all match.
+    .replace(/[^a-z0-9à-öø-ÿā-ſа-яёəığöüşç]/gi, '');
 }
 
 const GRID_BORDER = { style: 'thin', color: { argb: 'FFB7C6D9' } };
@@ -57,6 +62,16 @@ function colLetter(n) {
   return s;
 }
 
+function cellStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    // Excel date serials (e.g. 46260) — leave as plain number string; caller
+    // decides whether to treat as date. Titles/codes stay numeric-as-text.
+    return String(v);
+  }
+  return String(v).trim();
+}
+
 /* ============================ EXPORT ============================ */
 export async function exportSheetToExcel({
   fileTitle,
@@ -66,12 +81,20 @@ export async function exportSheetToExcel({
   extraFields,
   withStatus,
   statusLabel,
-  fmtDate
+  fmtDate,
+  // Optional UI labels so Excel headers match the Sheets table
+  // (Diaqram adı / Struktur adı / …). Falls back to stable defaults.
+  headers: headerOverride
 }) {
-  const header = ['№', 'Ad', 'Struktur adı', 'İkinci ad'];
-  if (hasExtraFields) header.push(...extraFields.map(f => f.label));
-  if (withStatus) header.push('Status');
-  header.push('Tarix');
+  const header = headerOverride?.length
+    ? [...headerOverride]
+    : (() => {
+        const h = ['№', 'Ad', 'Struktur adı', 'İkinci ad'];
+        if (hasExtraFields) h.push(...extraFields.map(f => f.label));
+        if (withStatus) h.push('Status');
+        h.push('Tarix');
+        return h;
+      })();
 
   const rows = (items || []).map((row, i) => {
     const r = [i + 1, row.title || '', row.strukturAdi || '', row.subtitle || ''];
@@ -143,17 +166,19 @@ export async function exportSheetToExcel({
 
 /* ============================ IMPORT ============================ */
 // Returns an array of plain row objects: { title, strukturAdi, subtitle, status?, ...extras }
-// Never mutates or deletes anything — purely parses the file.
+// ALWAYS one object per Excel data row (duplicates kept). Never merges/replaces
+// by matching text — caller creates new sheet rows for each.
 export async function importSheetRowsFromExcel(file, { hasExtraFields, extraFields, statusKeyFromLabel }) {
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array' });
+  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   if (!sheet) return [];
 
-  const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+  const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
   if (!aoa.length) return [];
 
-  const headers = aoa[0].map(norm);
+  const rawHeaders = (aoa[0] || []).map((h) => String(h ?? ''));
+  const headers = rawHeaders.map(norm);
   const idx = (names) => {
     for (const n of names) {
       const i = headers.indexOf(norm(n));
@@ -162,32 +187,82 @@ export async function importSheetRowsFromExcel(file, { hasExtraFields, extraFiel
     return -1;
   };
 
-  const iTitle = idx(['ad', 'title', 'diaqramadı', 'sənədadı', 'senedadi', 'şablonadı', 'sablonadi']);
-  const iStruktur = idx(['strukturadı', 'strukturadi', 'struktur']);
-  const iSub = idx(['ikinciad', 'ikinciadqısa', 'subtitle']);
-  const iStatus = idx(['status']);
+  // Match UI labels AND export defaults ("Ad", "Diaqram adı", "İş axışının adı"…)
+  let iTitle = idx([
+    'ad', 'title', 'diaqramadı', 'diaqramadi',
+    'işaxınınadı', 'isaxininadi', 'işaxiniadı',
+    'sənədadı', 'senedadi', 'şablonadı', 'sablonadi',
+    'name'
+  ]);
+  let iStruktur = idx([
+    'strukturadı', 'strukturadi', 'struktur', 'qrupadı', 'qrupadi', 'group'
+  ]);
+  let iSub = idx([
+    'ikinciad', 'ikinciadqısa', 'ikinciadqisa', 'subtitle',
+    'işaxınınnömrəsi', 'isaxininnomresi', 'nömrə', 'nomre', 'code'
+  ]);
+  let iStatus = idx(['status', 'vəziyyət', 'veziyyet']);
+  let iDate = idx(['tarix', 'date', 'tarixi']);
 
   const extraIdx = {};
   if (hasExtraFields) {
-    for (const f of extraFields) extraIdx[f.key] = idx([f.label]);
+    for (const f of extraFields) extraIdx[f.key] = idx([f.label, f.key]);
   }
+
+  // Positional fallback when headers don't match (different UI / hand-made file):
+  // № | title | struktur | subtitle | [extras…] | status | date
+  const used = new Set([iTitle, iStruktur, iSub, iStatus, iDate].filter((i) => i >= 0));
+  Object.values(extraIdx).forEach((i) => { if (i >= 0) used.add(i); });
+
+  const looksLikeNo = (h) => /^(№|no|n|#)$/i.test(String(h || '').trim()) || norm(h) === 'n';
+  let col = 0;
+  if (looksLikeNo(rawHeaders[0]) || headers[0] === 'n' || headers[0] === '') col = 1;
+
+  if (iTitle < 0) { while (used.has(col)) col += 1; iTitle = col; used.add(col); col += 1; }
+  if (iStruktur < 0) { while (used.has(col)) col += 1; iStruktur = col; used.add(col); col += 1; }
+  if (iSub < 0) { while (used.has(col)) col += 1; iSub = col; used.add(col); col += 1; }
+  if (hasExtraFields) {
+    for (const f of extraFields) {
+      if (extraIdx[f.key] < 0) {
+        while (used.has(col)) col += 1;
+        extraIdx[f.key] = col;
+        used.add(col);
+        col += 1;
+      }
+    }
+  }
+  if (iStatus < 0) { while (used.has(col)) col += 1; iStatus = col; used.add(col); col += 1; }
+  if (iDate < 0) { while (used.has(col)) col += 1; iDate = col; used.add(col); }
 
   const out = [];
   for (const r of aoa.slice(1)) {
     if (!r || r.every(v => v == null || String(v).trim() === '')) continue;
-    const row = {
-      title: iTitle !== -1 ? String(r[iTitle] ?? '').trim() : '',
-      strukturAdi: iStruktur !== -1 ? String(r[iStruktur] ?? '').trim() : '',
-      subtitle: iSub !== -1 ? String(r[iSub] ?? '').trim() : ''
-    };
+    const title = iTitle >= 0 ? cellStr(r[iTitle]) : '';
+    const strukturAdi = iStruktur >= 0 ? cellStr(r[iStruktur]) : '';
+    const subtitle = iSub >= 0 ? cellStr(r[iSub]) : '';
+    // Keep EVERY row — even if title/struktur duplicates an earlier row.
+    // Empty title alone is still imported when any other field has text.
+    if (!title && !strukturAdi && !subtitle) {
+      let anyExtra = false;
+      if (hasExtraFields) {
+        for (const f of extraFields) {
+          const i = extraIdx[f.key];
+          if (i >= 0 && cellStr(r[i])) { anyExtra = true; break; }
+        }
+      }
+      const st = iStatus >= 0 ? cellStr(r[iStatus]) : '';
+      if (!anyExtra && !st) continue;
+    }
+
+    const row = { title, strukturAdi, subtitle };
     if (hasExtraFields) {
       for (const f of extraFields) {
         const i = extraIdx[f.key];
-        if (i !== -1) row[f.key] = String(r[i] ?? '').trim();
+        if (i >= 0) row[f.key] = cellStr(r[i]);
       }
     }
-    if (iStatus !== -1 && statusKeyFromLabel) {
-      const key = statusKeyFromLabel(String(r[iStatus] ?? '').trim());
+    if (iStatus >= 0 && statusKeyFromLabel) {
+      const key = statusKeyFromLabel(cellStr(r[iStatus]));
       if (key) row.status = key;
     }
     out.push(row);

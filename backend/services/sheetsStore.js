@@ -342,3 +342,14 @@ export async function clearLinkedRows(kind, user) {
   }
   return { removed, items: sheets.items };
 }
+
+/** Remove every sheet row for this kind (Sheets checklist wipe). */
+export async function clearAllRows(kind, user) {
+  assertKind(kind);
+  const sheets = await readSheets(kind);
+  const removed = sheets.items.length;
+  if (removed === 0) return { removed: 0, items: [] };
+  sheets.items = [];
+  await writeSheets(kind, sheets, `Clear all ${removed} ${kind} sheet rows`, user);
+  return { removed, items: [] };
+}

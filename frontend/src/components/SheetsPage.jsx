@@ -455,17 +455,57 @@ export default function SheetsPage({
   }
 
   function statusKeyFromLabel(raw) {
-    const s = String(raw || '').trim().toLowerCase();
+    const s = String(raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!s) return null;
     for (const k of STATUS_ORDER) {
       if (k.toLowerCase() === s) return k;
       const m = STATUS_META[k];
-      if (t(m.id, m.default).toLowerCase() === s || m.default.toLowerCase() === s) return k;
+      const lab = t(m.id, m.default).trim().toLowerCase();
+      const def = String(m.default || '').trim().toLowerCase();
+      if (lab === s || def === s) return k;
     }
+    // Excel / hand-typed variants (Sheets-diagrams.xlsx etc.)
+    const aliases = {
+      'planlaşdırılır': 'progress',
+      'planlaşdırılmış': 'progress',
+      'planlasdirilir': 'progress',
+      'planlasdirilmis': 'progress',
+      'planned': 'progress',
+      'təsdiqlənmiş': 'done',
+      'təsdiqlənmişdir': 'done',
+      'tesdiqlenmis': 'done',
+      'tesdiqlenmisdir': 'done',
+      'approved': 'done',
+      'done': 'done',
+      'müzakirədədir': 'notdone',
+      'muzakirededir': 'notdone',
+      'qaralama': 'notdone',
+      'draft': 'notdone',
+      'imza prosesindədir': 'sign',
+      'imza prosesində': 'sign',
+      'imza prosesinde': 'sign',
+      'signature': 'sign'
+    };
+    if (aliases[s]) return aliases[s];
+    // Soft stem match (Planlaşdır… / Təsdiqlən… / İmza…)
+    if (s.startsWith('planlaşdır') || s.startsWith('planlasdir')) return 'progress';
+    if (s.startsWith('təsdiqlən') || s.startsWith('tesdiqlen')) return 'done';
+    if (s.startsWith('müzakirə') || s.startsWith('muzakire') || s.startsWith('qaralama')) return 'notdone';
+    if (s.startsWith('imza')) return 'sign';
     return null;
   }
 
   function handleExport() {
+    const headers = [
+      '№',
+      tByText('İş axışının adı'),
+      tByText('Struktur adı'),
+      tByText('İş axışının nömrəsi')
+    ];
+    if (hasExtraFields) headers.push(...EXTRA_FIELDS.map(f => tByText(f.label)));
+    if (withStatus) headers.push(tByText('Status'));
+    headers.push(tByText('Date'));
+
     exportSheetToExcel({
       fileTitle: `${tByText(meta.title)}-${kind}`,
       sheetName: tByText(meta.title),
@@ -474,7 +514,8 @@ export default function SheetsPage({
       extraFields: EXTRA_FIELDS,
       withStatus,
       statusLabel,
-      fmtDate
+      fmtDate,
+      headers
     });
   }
 
@@ -498,14 +539,18 @@ export default function SheetsPage({
         alert('Excel faylında sətir tapılmadı.');
         return;
       }
-      // Additive: create each parsed row as a new sheet row. Existing
-      // rows are never touched or deleted.
-      for (const r of rows) {
-        const created = await api.createSheet(kind, {
+      // Always ADD: never update/replace an existing row that has the same
+      // title/struktur text. Excel order is kept via sequential `order`.
+      const baseOrder = items.reduce((m, x) => Math.max(m, Number(x.order) || 0), 0);
+      const created = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const row = await api.createSheet(kind, {
           title: r.title,
           subtitle: r.subtitle,
           strukturAdi: r.strukturAdi,
           status: withStatus ? (r.status || null) : null,
+          order: baseOrder + i + 1,
           ...(hasExtraFields ? {
             docType: r.docType || '',
             edition: r.edition || '',
@@ -513,8 +558,10 @@ export default function SheetsPage({
             protocol: r.protocol || ''
           } : {})
         });
-        setItems(prev => [...prev, created]);
+        created.push(row);
       }
+      setItems(prev => [...prev, ...created]);
+      alert(`${created.length} sətir əlavə edildi. Mövcud sətirlər saxlanıldı.`);
     } catch (err) {
       alert('Xəta: ' + (err.message || 'İdxal edilmədi'));
     } finally {
@@ -577,6 +624,29 @@ export default function SheetsPage({
         await api.deleteSheet(kind, row.id);
       }
       await load();
+    } catch (e) {
+      alert('Xəta: ' + (e.message || 'Silinmədi'));
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClearAll() {
+    if (!isAdmin || items.length === 0 || busy || importBusy) return;
+    if (!confirm(
+      `${items.length} sətirin hamısı Sheets-dən silinsin?\n` +
+      `Bu geri qaytarılmır. Əsas diaqram/sənəd siyahısına toxunulmur.`
+    )) return;
+    setBusy(true);
+    try {
+      await api.clearAllSheets(kind);
+      setItems([]);
+      setBlankDrafts({});
+      setHiddenBlankOrders(new Set());
+      setColFilters({});
+      setOpenColFilter(null);
+      setStatusFilter(null);
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
       await load();
@@ -698,7 +768,7 @@ export default function SheetsPage({
                 <Ban size={18} />
                 <span className="sheets-stat-text">
                   <span className="sheets-stat-num">{stats.nostatus}</span>
-                  <span className="sheets-stat-label">{tByText('Levğ edilmiş')}</span>
+                  <span className="sheets-stat-label">{tByText('Ləğv edilmiş')}</span>
                 </span>
               </button>
             )}
@@ -736,7 +806,23 @@ export default function SheetsPage({
                 <table className="sheets-table">
                   <thead>
                     <tr>
-                      <th className="col-n">№</th>
+                      <th className="col-n">
+                        {isAdmin && items.length > 0 ? (
+                          <button
+                            type="button"
+                            className="sheets-col-n-clear"
+                            title={tByText('Hamısını sil')}
+                            aria-label={tByText('Hamısını sil')}
+                            disabled={busy || importBusy || loadUi.show}
+                            onClick={handleClearAll}
+                          >
+                            <span className="sheets-col-n-label">№</span>
+                            <Trash2 size={14} className="sheets-col-n-trash" aria-hidden />
+                          </button>
+                        ) : (
+                          '№'
+                        )}
+                      </th>
                       {renderColHeader('title', tByText('İş axışının adı'), 'col-title')}
                       {renderColHeader('strukturAdi', tByText('Struktur adı'), 'col-struktur')}
                       {renderColHeader('subtitle', tByText('İş axışının nömrəsi'), 'col-sub')}
