@@ -97,19 +97,19 @@ function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, c
 
 const KIND_META = {
   diagrams: {
-    title: 'Sheets',
+    title: 'İş axışların hesabatı',
     sub: 'Diaqram kataloqu — İş Axışlarından ayrıca',
     namePh: 'Yeni İş axışının adı…',
     subPh: 'İkinci ad…'
   },
   pdfs: {
-    title: 'Sheets',
+    title: 'Sənəd kataloqların hesabatı',
     sub: 'Sənəd kataloqu — Normativ Sənədlərdən ayrıca',
     namePh: 'Yeni sənəd adı…',
     subPh: 'İkinci ad…'
   },
   templates: {
-    title: 'Sheets',
+    title: 'Şablon kataloqların hesabatı',
     sub: 'Şablon kataloqu — Şablonlardan ayrıca',
     namePh: 'Yeni şablon adı…',
     subPh: 'İkinci ad…'
