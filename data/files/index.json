@@ -1486,6 +1486,17 @@
       "groupId": 31,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:35:26.478Z"
+    },
+    {
+      "id": 127,
+      "title": "Texniki təhlükəsizlik bəyannaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 31,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:35:28.193Z"
     }
   ],
   "files": []
