@@ -769,6 +769,17 @@
       "groupId": 14,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:21:00.022Z"
+    },
+    {
+      "id": 71,
+      "title": "Büdcə Hazirlanmasi Plani",
+      "subtitle": "ALC-İMS-Pİ-FİNC-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 15,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:21:01.702Z"
     }
   ],
   "groups": [
@@ -827,6 +838,10 @@
     {
       "id": 14,
       "name": "Layihələrin idarə olunması departamenti"
+    },
+    {
+      "id": 15,
+      "name": "Maliyyə departamenti"
     }
   ]
 }
