@@ -388,6 +388,17 @@
       "groupId": 5,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:51.671Z"
+    },
+    {
+      "id": 29,
+      "title": "Əməliyyatlarin Konfiqurasiyasi Və Transformasiya Departamentinin Əsasnaməsi",
+      "subtitle": "ALM-İMS-ƏKTD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 6,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:53.878Z"
     }
   ],
   "files": []
