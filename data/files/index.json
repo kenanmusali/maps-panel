@@ -1196,6 +1196,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:41.352Z"
+    },
+    {
+      "id": 101,
+      "title": "Konteyner yüklərinin yük alana verilməsi prosesi",
+      "subtitle": "PS/İMS/KAB /01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:43.304Z"
     }
   ],
   "files": []
