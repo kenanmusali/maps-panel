@@ -972,6 +972,17 @@
       "groupId": 13,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:34:08.440Z"
+    },
+    {
+      "id": 81,
+      "title": "Maliyyə departamentinin əsasnaməsi",
+      "subtitle": "Ə/ALM/16",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 13,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:34:10.517Z"
     }
   ],
   "files": []
