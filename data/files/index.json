@@ -208,6 +208,17 @@
       "groupId": 6,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:37.467Z"
+    },
+    {
+      "id": 20,
+      "title": "Əməliyyatlarin Konfiqurasiyasi Və Transformasiya Departamentinin Əsasnaməsi",
+      "subtitle": "ALM-İMS-ƏKTD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 7,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:38.904Z"
     }
   ],
   "groups": [
@@ -234,6 +245,10 @@
     {
       "id": 6,
       "name": "Daxili daşımalar departamenti"
+    },
+    {
+      "id": 7,
+      "name": "Əməliyyatların konfiqurasiyası və transformasiya departamenti"
     }
   ]
 }
