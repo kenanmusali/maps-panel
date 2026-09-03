@@ -1530,6 +1530,17 @@
       "groupId": 22,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:35:32.972Z"
+    },
+    {
+      "id": 131,
+      "title": "Vahid pəncərə departamentinin əsasnaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 22,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:35:34.507Z"
     }
   ],
   "files": []
