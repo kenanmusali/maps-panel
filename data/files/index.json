@@ -626,6 +626,17 @@
       "groupId": 13,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:40.336Z"
+    },
+    {
+      "id": 58,
+      "title": "İlk tibbi yardimin təşkili proseduru",
+      "subtitle": "İMS/SƏTƏM/04",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 13,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:20:41.758Z"
     }
   ],
   "groups": [
