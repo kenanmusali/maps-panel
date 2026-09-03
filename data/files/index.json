@@ -428,6 +428,17 @@
       "groupId": 12,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:11.408Z"
+    },
+    {
+      "id": 40,
+      "title": "İnsan Resurslari Və İnzibati Departamentin Əsasnaməsi",
+      "subtitle": "ALM-İMS-İRİD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:20:13.033Z"
     }
   ],
   "groups": [
