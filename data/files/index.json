@@ -671,6 +671,17 @@
       "groupId": 9,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:29.228Z"
+    },
+    {
+      "id": 54,
+      "title": "İnsan resursları və inzibati departamentin əsasnaməsi",
+      "subtitle": "ALC-IMS-S-HRAD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:33:30.635Z"
     }
   ],
   "files": []
