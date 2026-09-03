@@ -1295,6 +1295,17 @@
       "groupId": 17,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:34:57.983Z"
+    },
+    {
+      "id": 110,
+      "title": "Təchizat şöbəsinin əsasnaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 17,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:34:59.528Z"
     }
   ],
   "files": []
