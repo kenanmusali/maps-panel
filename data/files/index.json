@@ -43,12 +43,27 @@
       "groupId": 1,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:16.486Z"
+    },
+    {
+      "id": 5,
+      "title": "Anbarın idarəedilməsi proseduru",
+      "subtitle": "Pr/İMS/KAB/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 2,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:18.044Z"
     }
   ],
   "groups": [
     {
       "id": 1,
       "name": "Anbar logistikası şöbəsi"
+    },
+    {
+      "id": 2,
+      "name": "Anbar logistikası şöbəsi / SƏ / Konteyner əməliyyatları şöbəsi"
     }
   ]
 }
