@@ -3001,7 +3001,6 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 }
 .sheets-table .col-n { left: 0; }
 .sheets-table .col-title {
-  left: 52px; /* right after the (fixed-width) № column */
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.12);
 }
 .sheets-col-n-clear {
