@@ -774,6 +774,17 @@
       "groupId": 29,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:41.402Z"
+    },
+    {
+      "id": 63,
+      "title": "Fəaliyyətin planlanmasi proseduru",
+      "subtitle": "PR/İMS/ 01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:42.705Z"
     }
   ],
   "files": []
