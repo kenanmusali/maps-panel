@@ -1253,6 +1253,17 @@
       "groupId": 24,
       "status": "progress",
       "uploadedAt": "2026-09-03T12:22:12.114Z"
+    },
+    {
+      "id": 115,
+      "title": "Nəqliyyat idarəetmə siyasəti",
+      "subtitle": "İMS/SƏTƏM/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 24,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:22:13.587Z"
     }
   ],
   "groups": [
