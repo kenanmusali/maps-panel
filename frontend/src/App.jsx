@@ -154,7 +154,7 @@ export default function App() {
       return (
         <SheetsPage
           kind={sheetsKind}
-          withStatus
+          withStatus={sheetsKind !== 'templates'}
           onBack={backFromSheets}
           onLogout={onLogout}
         />

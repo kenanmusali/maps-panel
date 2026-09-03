@@ -64,9 +64,7 @@ const KIND_COLUMNS = {
     { field: 'subtitle', label: 'Sənədin adı', cls: 'col-sub', ph: () => 'Sənədin adı…', aliases: ['sənədinadı', 'senedinadi', 'subtitle'] },
     { field: 'docType', label: 'Sənədin növü', cls: 'col-extra', ph: () => 'Sənədin növü…', aliases: ['sənədinnövü', 'senedinnovu', 'doctype'] },
     { field: 'edition', label: 'Nəşr', cls: 'col-extra', ph: () => 'Nəşr…', aliases: ['nəşr', 'nesr', 'edition'] },
-    { field: 'approvalDate', label: 'Təsdiq tarixi', cls: 'col-extra', ph: () => 'gg.aa.iiii', aliases: ['təsdiqtarixi', 'tesdiqtarixi', 'approvaldate'] },
-    { field: 'protocol', label: 'Qərar / Protokol', cls: 'col-extra', ph: () => 'Qərar / Protokol…', aliases: ['qərarprotokol', 'qerarprotokol', 'protocol'] },
-    { field: 'pageCount', label: 'Səhifə sayı', cls: 'col-extra', ph: () => 'Səhifə sayı…', aliases: ['səhifəsayı', 'sehifesayi', 'pagecount'] }
+    { field: 'approvalDate', label: 'Təsdiq tarixi', cls: 'col-extra', ph: () => 'gg.aa.iiii', aliases: ['təsdiqtarixi', 'tesdiqtarixi', 'approvaldate'] }
   ]
 };
 // İş Axışları keeps its Date column; Normativ Sənədlər / Şablonlar don't need it.
@@ -921,7 +919,7 @@ export default function SheetsPage({
           </div>
         </div>
 
-        {!error && (
+        {!error && withStatus && (
           <div className="sheets-stats">
             <button
               type="button"

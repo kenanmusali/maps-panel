@@ -2985,6 +2985,25 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .sheets-table tr.sheets-blank-row .col-n { color: var(--text-muted); }
 .sheets-table tr.linked { background: color-mix(in srgb, var(--primary-soft) 35%, transparent); }
 .sheets-table .col-n { width: 52px; text-align: center; color: var(--text-muted); font-weight: 600; padding: 10px 8px; }
+/* Frozen columns (Excel-style): № and the title column stay put while the
+   rest of the sheet scrolls horizontally, so you never lose track of which
+   row/document you're looking at once there isn't room for every column. */
+.sheets-table td.col-n,
+.sheets-table td.col-title {
+  position: sticky;
+  background: inherit; /* pick up the row's own background (sheet-only / linked) */
+  z-index: 1;
+}
+.sheets-table th.col-n,
+.sheets-table th.col-title {
+  position: sticky;
+  z-index: 3; /* stay above both the plain sticky header row and the sticky body cells */
+}
+.sheets-table .col-n { left: 0; }
+.sheets-table .col-title {
+  left: 52px; /* right after the (fixed-width) № column */
+  box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.12);
+}
 .sheets-col-n-clear {
   position: relative;
   display: inline-flex;
