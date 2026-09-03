@@ -723,10 +723,35 @@ export default function SheetsPage({
     }
   }
 
+  const linked = (row) => row.itemId != null || row.processId != null;
+
+  // Deletes the actual main-list item (process/diagram, pdf or template)
+  // that a linked row points to. No-op for hand-typed rows (nothing to
+  // delete there). Errors are swallowed with a console warning so a
+  // 404 (item already gone) doesn't block the sheet row from being
+  // removed too.
+  async function deleteLinkedItem(row) {
+    const iid = row?.itemId ?? row?.processId;
+    if (iid == null) return;
+    try {
+      if (kind === 'pdfs') await pdfsApi.remove(iid);
+      else if (kind === 'templates') await templatesApi.remove(iid);
+      else await api.deleteProcess(iid);
+    } catch (e) {
+      console.warn('Əsas siyahıdan silinmədi:', e.message || e);
+    }
+  }
+
   async function removeRow(id) {
     if (!isAdmin) return;
-    if (!confirm('Bu sətir Sheets-dən silinsin? (Əsas siyahıya toxunmur)')) return;
+    const row = items.find(x => Number(x.id) === Number(id));
+    const isLinked = row ? linked(row) : false;
+    const msg = isLinked
+      ? 'Bu sətir silinsin? Əsas siyahıdakı uyğun element də silinəcək. Bu geri qaytarılmır.'
+      : 'Bu sətir Sheets-dən silinsin? (Əsas siyahıya toxunmur)';
+    if (!confirm(msg)) return;
     try {
+      if (isLinked) await deleteLinkedItem(row);
       await api.deleteSheet(kind, id);
       setItems(prev => {
         const next = prev.filter(x => Number(x.id) !== Number(id));
@@ -737,8 +762,6 @@ export default function SheetsPage({
       alert('Xəta: ' + (e.message || 'Silinmədi'));
     }
   }
-
-  const linked = (row) => row.itemId != null || row.processId != null;
 
   const stats = useMemo(() => {
     const byStatus = {};
@@ -918,9 +941,18 @@ export default function SheetsPage({
 
   async function handleClearAll() {
     if (!isAdmin || items.length === 0) return;
-    if (!confirm(`Bu Sheets-in HAMISI (${items.length} sətir) silinsin? Bu geri qaytarılmır.`)) return;
+    const linkedCount = items.filter(linked).length;
+    const msg = linkedCount > 0
+      ? `Bu Sheets-in HAMISI (${items.length} sətir) silinsin? Əsas siyahıdakı uyğun ${linkedCount} element də silinəcək. Bu geri qaytarılmır.`
+      : `Bu Sheets-in HAMISI (${items.length} sətir) silinsin? Bu geri qaytarılmır.`;
+    if (!confirm(msg)) return;
     setBusy(true);
     try {
+      // Delete the linked main-list items first (best-effort, one by one),
+      // then wipe the sheet itself.
+      for (const row of items.filter(linked)) {
+        await deleteLinkedItem(row);
+      }
       await api.clearAllSheets(kind);
       setHiddenBlankOrders(new Set());
       setBlankDrafts({});
