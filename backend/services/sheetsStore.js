@@ -6,19 +6,44 @@
     pdfs      → data/files/sheets.json      (Normativ Sənədlər)
     templates → data/templates/sheets.json  (Şablonlar)
 
-  Sheet-only rows (itemId=null) are a raw checklist. Creating an item in the
-  matching section upserts a linked row. Adding here never creates the item.
+  Two-way sync with the section's own catalog (diagrams / pdfs / templates):
+    - item → sheet: syncFromItem() upserts the sheet row whenever an item's
+      title/subtitle/status/struktur changes (called from processes.js /
+      pdfs.js / templates.js).
+    - sheet → item: syncRowToTarget() runs whenever a sheet row is created
+      or edited (routes/sheets.js). It matches an existing item by the
+      triple (title + strukturAdi + subtitle/nömrə). If found, only the
+      status is pushed across (never creates a duplicate). If nothing
+      matches, a new item is auto-created (status defaults to the kind's
+      first status, "Planlaşdırılır") so it immediately shows up in the
+      section's own list.
 */
 
 import { getFile as mongoGet, putFile as mongoPut, attribution } from './store.js';
-import { getFile as githubGet } from './github.js';
+import { getFile as githubGet, putFile as githubPut } from './github.js';
 
-const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
 const dataPath = () => (process.env.DATA_PATH || 'data').replace(/^\/|\/$/g, '');
 
+// Status sets differ per kind — İş Axışları dropped "sign" and gained an
+// explicit terminal "cancelled"; Normativ Sənədlər / Şablonlar additionally
+// have "prep" and "renew". Keep in sync with frontend Status.jsx.
+export const ALLOWED_STATUS_BY_KIND = {
+  diagrams: ['progress', 'prep', 'notdone', 'done', 'cancelled'],
+  pdfs: ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew'],
+  templates: ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew']
+};
+// Back-compat flat list (used by a couple of older call sites / legacy routes).
+export const ALLOWED_STATUS = ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew'];
+
+// A row created purely from the Sheet (no explicit status typed) is
+// considered "just queued" — defaults to the first status in the kind's list.
+const DEFAULT_SYNC_STATUS = 'progress';
+
 // Extra hand-typed fields shown only for the pdfs / templates sheets
-// (Normativ Sənədlər / Şablonlar): sənədin növü, nəşr, təsdiq tarixi, qərar/protokol.
-export const EXTRA_FIELDS = ['docType', 'edition', 'approvalDate', 'protocol'];
+// (Normativ Sənədlər / Şablonlar): sənədin növü, nəşr, təsdiq tarixi,
+// qərar/protokol, səhifə sayı.
+export const EXTRA_FIELDS = ['docType', 'edition', 'approvalDate', 'protocol', 'pageCount'];
+// (kept as a single flat list — SheetsPage.jsx decides per-kind order/labels)
 
 export const SHEET_KINDS = {
   diagrams: {
@@ -45,15 +70,8 @@ export const SHEET_KINDS = {
   }
 };
 
-export { ALLOWED_STATUS };
-
-// Sheets is a manual, standalone checklist — items created/edited elsewhere
-// (diagrams, pdfs, templates) must NEVER auto-populate a Sheets row. This
-// flag disables syncFromItem/syncFromProcess everywhere they're called
-// (pdfs.js, templates.js, processes.js status/create/update handlers) in
-// one place, without touching those call sites. Do not remove the
-// functions below — only this flag controls whether they run.
-const AUTO_SYNC_ENABLED = false;
+// Sheets ↔ section sync is ON in both directions — see file header.
+const AUTO_SYNC_ENABLED = true;
 
 export function assertKind(kind) {
   if (!SHEET_KINDS[kind]) {
@@ -70,16 +88,20 @@ function sheetsPath(kind) {
 function indexPath(kind) {
   return `${dataPath()}/${assertKind(kind).indexRel}`;
 }
+function processBodyPath(id) {
+  return `${dataPath()}/diagrams/processes/process-${id}.json`;
+}
 
 function nextId(list) {
   const ids = (list || []).map(x => Number(x.id)).filter(Number.isFinite);
   return ids.length ? Math.max(...ids) + 1 : 1;
 }
 
-export function normalizeStatus(raw) {
+export function normalizeStatus(kind, raw) {
   if (raw == null || raw === '') return null;
   const s = String(raw);
-  return ALLOWED_STATUS.includes(s) ? s : null;
+  const allowed = ALLOWED_STATUS_BY_KIND[kind] || ALLOWED_STATUS;
+  return allowed.includes(s) ? s : null;
 }
 
 /** Normalize legacy processId → itemId */
@@ -124,6 +146,13 @@ async function readIndexFile(kind) {
   return mongoGet(p);
 }
 
+async function writeIndexFile(kind, content, message, user) {
+  const meta = assertKind(kind);
+  const p = indexPath(kind);
+  if (meta.indexVia === 'github') return githubPut(p, content, attribution(user, message));
+  return mongoPut(p, content, attribution(user, message));
+}
+
 /** One-time seed from the section index when sheets is empty. */
 export async function backfillFromIndex(kind, user) {
   const meta = assertKind(kind);
@@ -149,7 +178,7 @@ export async function backfillFromIndex(kind, user) {
         title: String(p.title || ''),
         subtitle: String(p.subtitle || ''),
         strukturAdi: strukturFor(p),
-        status: normalizeStatus(p.status),
+        status: normalizeStatus(kind, p.status),
         date: now,
         itemId: id,
         processId: id
@@ -180,6 +209,7 @@ export async function backfillFromIndex(kind, user) {
 
 /**
  * Upsert a sheet row from a section item (diagram / pdf / template).
+ * Item → Sheet direction.
  */
 export async function syncFromItem(kind, { itemId, title, subtitle, status, sheetId, strukturAdi }, user) {
   assertKind(kind);
@@ -189,7 +219,7 @@ export async function syncFromItem(kind, { itemId, title, subtitle, status, shee
 
   const sheets = await readSheets(kind);
   const now = new Date().toISOString();
-  const st = status === undefined ? undefined : normalizeStatus(status);
+  const st = status === undefined ? undefined : normalizeStatus(kind, status);
   const struktur = strukturAdi != null ? String(strukturAdi) : undefined;
 
   let row = null;
@@ -250,6 +280,127 @@ export async function backfillFromProcesses(user) {
   return backfillFromIndex('diagrams', user);
 }
 
+/* ============================================================
+   Sheet → Item sync (the reverse direction)
+   ============================================================ */
+
+function norm(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
+function groupNameOf(entry, groups) {
+  const g = groups.find(x => Number(x.id) === Number(entry?.groupId));
+  return g?.name ? String(g.name) : '';
+}
+
+// Find (or create) the group whose name matches strukturAdi. Returns the
+// group id; mutates `groups` in place when a new one is created.
+function resolveGroupId(groups, strukturAdi) {
+  const wanted = norm(strukturAdi);
+  if (wanted) {
+    const hit = groups.find(g => norm(g.name) === wanted);
+    if (hit) return Number(hit.id);
+  }
+  if (!groups.length) {
+    const g = { id: 1, name: strukturAdi || 'Ümumi' };
+    groups.push(g);
+    return g.id;
+  }
+  if (wanted) {
+    const g = { id: nextId(groups), name: strukturAdi };
+    groups.push(g);
+    return g.id;
+  }
+  return Number(groups[0].id);
+}
+
+/**
+ * Called whenever a Sheets row (diagrams / pdfs / templates) is created or
+ * edited. Matches an existing item by (title + strukturAdi + subtitle). If
+ * found, only pushes a status change across (never duplicates). If nothing
+ * matches, auto-creates a new item so it shows up in the section's own list
+ * right away, with status defaulting to "Planlaşdırılır".
+ *
+ * Returns { itemId, created, status } or null when there was nothing to
+ * sync (blank title) or sync is disabled.
+ */
+export async function syncRowToTarget(kind, row, user) {
+  assertKind(kind);
+  if (!AUTO_SYNC_ENABLED) return null;
+  const title = (row.title || '').trim();
+  const strukturAdi = (row.strukturAdi || '').trim();
+  const subtitle = (row.subtitle || '').trim();
+  if (!title) return null; // nothing worth syncing for a blank row
+
+  const meta = SHEET_KINDS[kind];
+  const idxFile = await readIndexFile(kind);
+  const idx = (idxFile && idxFile.content && typeof idxFile.content === 'object') ? idxFile.content : {};
+  const list = Array.isArray(idx[meta.indexKey]) ? idx[meta.indexKey] : [];
+  const groups = Array.isArray(idx.groups) ? idx.groups : [];
+  idx[meta.indexKey] = list;
+  idx.groups = groups;
+
+  const targetStatus = normalizeStatus(kind, row.status);
+
+  // 1) Already linked to an item? Prefer that — never re-match by text once linked.
+  let entry = null;
+  const linkedId = row.itemId ?? row.processId;
+  if (linkedId != null) {
+    entry = list.find(p => Number(p.id) === Number(linkedId)) || null;
+  }
+  // 2) Otherwise match by the triple: name + struktur adı + nömrə.
+  if (!entry) {
+    entry = list.find(p =>
+      norm(p.title) === norm(title) &&
+      norm(groupNameOf(p, groups)) === norm(strukturAdi) &&
+      norm(p.subtitle) === norm(subtitle)
+    ) || null;
+  }
+
+  if (entry) {
+    let changed = false;
+    if (targetStatus !== (entry.status ?? null)) {
+      if (targetStatus === null) delete entry.status; else entry.status = targetStatus;
+      changed = true;
+    }
+    if (changed) {
+      await writeIndexFile(kind, idx, `Sync ${kind} item ${entry.id} status from sheet`, user);
+    }
+    return { itemId: Number(entry.id), created: false, status: entry.status ?? null };
+  }
+
+  // Nothing matched — auto-create so it shows up in the section list.
+  const gid = resolveGroupId(groups, strukturAdi);
+  const newId = nextId(list);
+  const status = targetStatus == null ? DEFAULT_SYNC_STATUS : targetStatus;
+
+  if (kind === 'diagrams') {
+    const process = {
+      id: newId, title, subtitle,
+      width: 1600, height: 600,
+      lanes: [], nodes: [], edges: []
+    };
+    await mongoPut(processBodyPath(newId), process, attribution(user, `Auto-create process ${newId} from sheet`));
+    list.push({ id: newId, title, subtitle, groupId: gid, status });
+  } else {
+    // pdfs / templates — no binary file yet; it's a placeholder entry until
+    // someone uploads the actual document from the section page.
+    list.push({
+      id: newId,
+      title,
+      subtitle,
+      filename: '',
+      size: 0,
+      noFile: true,
+      groupId: gid,
+      status,
+      uploadedAt: new Date().toISOString()
+    });
+  }
+  await writeIndexFile(kind, idx, `Auto-create ${kind} item ${newId} from sheet`, user);
+  return { itemId: newId, created: true, status };
+}
+
 export async function createSheetRow(kind, { title, subtitle, status, strukturAdi, order, ...rest }, user) {
   assertKind(kind);
   // Empty title allowed — plus button must work even when fields are blank.
@@ -267,7 +418,7 @@ export async function createSheetRow(kind, { title, subtitle, status, strukturAd
     title: name,
     subtitle: subtitle != null ? String(subtitle) : '',
     strukturAdi: strukturAdi != null ? String(strukturAdi).trim() : '',
-    status: normalizeStatus(status),
+    status: normalizeStatus(kind, status),
     date: new Date().toISOString(),
     itemId: null,
     processId: null
@@ -276,6 +427,17 @@ export async function createSheetRow(kind, { title, subtitle, status, strukturAd
     if (typeof rest[f] === 'string') item[f] = rest[f];
   }
   if (item.status == null) delete item.status;
+
+  // Sheet → item sync: match-or-create in the section's own list.
+  try {
+    const sync = await syncRowToTarget(kind, item, user);
+    if (sync?.itemId != null) {
+      item.itemId = sync.itemId;
+      item.processId = sync.itemId;
+      if (sync.created && sync.status && item.status == null) item.status = sync.status;
+    }
+  } catch (e) { console.error(`[sheets->${kind} sync create]`, e.message); }
+
   sheets.items = [...sheets.items, item];
   await writeSheets(kind, sheets, `Create ${kind} sheet row ${item.id}`, user);
   return normalizeRow(item);
@@ -298,7 +460,7 @@ export async function updateSheetRow(kind, id, patch, user) {
     if (typeof patch[f] === 'string') row[f] = patch[f];
   }
   if (patch.status !== undefined) {
-    const st = normalizeStatus(patch.status);
+    const st = normalizeStatus(kind, patch.status);
     if (st === null) delete row.status;
     else row.status = st;
   }
@@ -308,6 +470,17 @@ export async function updateSheetRow(kind, id, patch, user) {
     row.itemId = v;
     row.processId = v;
   }
+
+  // Sheet → item sync: title/strukturAdi/subtitle/status edits all flow
+  // through here — match-or-create, then push the status across.
+  try {
+    const sync = await syncRowToTarget(kind, row, user);
+    if (sync?.itemId != null) {
+      row.itemId = sync.itemId;
+      row.processId = sync.itemId;
+    }
+  } catch (e) { console.error(`[sheets->${kind} sync update]`, e.message); }
+
   await writeSheets(kind, sheets, `Update ${kind} sheet row ${id}`, user);
   return normalizeRow(row);
 }
@@ -328,8 +501,8 @@ export async function deleteSheetRow(kind, id, user) {
 
 /**
  * Bulk-remove every row that was auto-populated from an item (itemId set) —
- * i.e. rows created by the old GET-time backfill or by the (now-disabled)
- * per-item auto-sync. Hand-typed blank rows (itemId=null) are never touched.
+ * i.e. rows created by the old GET-time backfill or by the per-item auto-sync.
+ * Hand-typed blank rows (itemId=null) are never touched.
  */
 export async function clearLinkedRows(kind, user) {
   assertKind(kind);

@@ -9,7 +9,7 @@ import {
 import { Archive, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
 import { api, setToken } from '../../api/client.js';
 import { pdfsApi } from '../../api/pdfsClient.js';
-import { StatusControl } from '../Status.jsx';
+import { StatusControl, DOC_STATUS_META, DOC_STATUS_ORDER } from '../Status.jsx';
 import PdfFormModal from './PdfFormModal.jsx';
 import NameModal from '../NameModal.jsx';
 import TitleEditButton from '../TitleEditButton.jsx';
@@ -186,8 +186,10 @@ export default function PdfList({
     const p = parentId == null ? null : Number(parentId);
     return groups.filter(g => normPid(g) === p);
   }
+  // Cancelled (Ləğv edildi) items are hidden from this list entirely — they
+  // stay reachable/editable only from the Sheets page.
   function itemsOfGroup(gid) {
-    return pdfs.filter(p => Number(p.groupId) === Number(gid));
+    return pdfs.filter(p => Number(p.groupId) === Number(gid) && p.status !== 'cancelled');
   }
   function groupNumber(g) {
     const parts = [];
@@ -661,16 +663,28 @@ export default function PdfList({
 
                   {withStatus && (
                     <div className="row-status" onClick={e => e.stopPropagation()}>
-                      <StatusControl value={p.status} editable={isAdmin} onChange={(s) => changeStatus(p, s)} />
+                      <StatusControl
+                        value={p.status}
+                        editable={isAdmin}
+                        onChange={(s) => changeStatus(p, s)}
+                        meta={DOC_STATUS_META}
+                        order={DOC_STATUS_ORDER}
+                      />
                     </div>
                   )}
 
+                  {(p.noFile || !p.filename) && (
+                    <span className="pdf-nofile-badge" title="Sheets-dən avtomatik yaradılıb — fayl hələ yüklənməyib">
+                      {tByText('Fayl yüklənməyib')}
+                    </span>
+                  )}
+
                   <div className="pdf-actions">
-                    <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id} title={rawByText('Bax')}>
+                    <button className="action-btn" onClick={() => viewPdf(p)} disabled={busy === p.id || p.noFile || !p.filename} title={rawByText('Bax')}>
                       {busy === p.id ? <Loader2 size={15} className="spin" /> : <Eye size={15} />}
                       <span>{tByText('Bax')}</span>
                     </button>
-                    <button className="action-btn" onClick={() => downloadPdf(p)} disabled={busy === p.id} title={rawByText('Yüklə')}>
+                    <button className="action-btn" onClick={() => downloadPdf(p)} disabled={busy === p.id || p.noFile || !p.filename} title={rawByText('Yüklə')}>
                       <DownloadIcon size={15} /><span>{tByText('Yüklə')}</span>
                     </button>
                     {isAdmin && (

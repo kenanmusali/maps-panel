@@ -1,29 +1,50 @@
 import { useState, useRef, useEffect } from 'react';
-import { Clock,Signature, CheckCircle2, AlertCircle,CircleX, ChevronDown } from './icons.jsx';
+import {
+  Clock, Signature, CheckCircle2, Hammer, RefreshCw, MessageCircleQuestion, Ban, ChevronDown
+} from './icons.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
 
-// Single source of truth for the three item statuses used across the
-// diagrams (İş Axışları) and PDF (Normativ Sənədlər) sections.
-//   progress → in progress   done → finished   notdone → not finished
-export const STATUS_META = {
-  progress: { id: 'status.progress', default: 'Planlaşdırılır', Icon: AlertCircle,        cls: 'progress' },
-  notdone:  { id: 'status.notdone', default: 'Müzakirədədir',   Icon: CircleX,  cls: 'notdone' },
-  sign:     { id: 'status.sign', default: 'İmza prosesindədir',  Icon: Signature, cls: 'sign' },
-  done:     { id: 'status.done', default: 'Təsdiqlənmiş', Icon: CheckCircle2, cls: 'done' },
+// Two independent status sets, one per section:
+//   PROCESS_* → İş Axışları (diagrams)
+//   DOC_*     → Normativ Sənədlər (pdfs) & Şablonlar (templates)
+// Every key has its own icon/color — nothing reused across the same set.
+
+export const PROCESS_STATUS_META = {
+  progress:  { id: 'status.progress',  default: 'Planlaşdırılır',          Icon: Clock,                 cls: 'progress' },
+  prep:      { id: 'status.prep',      default: 'Hazırlıq prosesindədir',  Icon: Hammer,                cls: 'prep' },
+  notdone:   { id: 'status.notdone',   default: 'Müzakirədədir',           Icon: MessageCircleQuestion, cls: 'notdone' },
+  done:      { id: 'status.done',      default: 'Təsdiqlənmiş',            Icon: CheckCircle2,          cls: 'done' },
+  cancelled: { id: 'status.cancelled', default: 'Ləğv edilmiş',            Icon: Ban,                   cls: 'cancelled' }
 };
+export const PROCESS_STATUS_ORDER = ['progress', 'prep', 'notdone', 'done', 'cancelled'];
 
-export const STATUS_ORDER = ['progress', 'notdone', 'sign', 'done'];
+export const DOC_STATUS_META = {
+  progress:  { id: 'docstatus.progress',  default: 'Planlaşdırılır',         Icon: Clock,                 cls: 'progress' },
+  prep:      { id: 'docstatus.prep',      default: 'Hazırlıq prosesində',    Icon: Hammer,                cls: 'prep' },
+  notdone:   { id: 'docstatus.notdone',   default: 'Müzakirədədir',          Icon: MessageCircleQuestion, cls: 'notdone' },
+  sign:      { id: 'docstatus.sign',      default: 'İmza prosesindədir',     Icon: Signature,             cls: 'sign' },
+  done:      { id: 'docstatus.done',      default: 'Təsdiq edildi',          Icon: CheckCircle2,          cls: 'done' },
+  cancelled: { id: 'docstatus.cancelled', default: 'Ləğv edildi',            Icon: Ban,                   cls: 'cancelled' },
+  renew:     { id: 'docstatus.renew',     default: 'Yeniləcək',              Icon: RefreshCw,             cls: 'renew' }
+};
+export const DOC_STATUS_ORDER = ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew'];
 
-function norm(value) {
-  return STATUS_META[value] ? value : null;
+// Back-compat default export — code that hasn't been made kind-aware
+// (Diagram.jsx / Home.jsx / NameModal.jsx, all İş Axışları-only) keeps
+// working against the process status set.
+export const STATUS_META = PROCESS_STATUS_META;
+export const STATUS_ORDER = PROCESS_STATUS_ORDER;
+
+function norm(meta, value) {
+  return meta[value] ? value : null;
 }
 
 // Read-only coloured pill with icon + label. Renders nothing when no status.
-export function StatusBadge({ value, size = 14 }) {
+export function StatusBadge({ value, size = 14, meta = PROCESS_STATUS_META }) {
   const { t } = useLabels();
-  const v = norm(value);
+  const v = norm(meta, value);
   if (!v) return null;
-  const { default: def, Icon, cls, id } = STATUS_META[v];
+  const { default: def, Icon, cls, id } = meta[v];
   const label = t(id, def);
   return (
     <span className={`status-badge ${cls}`} title={label}>
@@ -34,10 +55,15 @@ export function StatusBadge({ value, size = 14 }) {
 }
 
 // Interactive control for admins. Shows the current status and, on click,
-// a small menu to pick a status or clear it. Viewers get <StatusBadge> instead.
-export function StatusControl({ value, editable, onChange, size = 14 }) {
+// a small menu to pick a status. Viewers get <StatusBadge> instead.
+// Pass `meta`/`order` to switch between the İş Axışları and Normativ
+// Sənədlər/Şablonlar status sets — defaults to İş Axışları.
+export function StatusControl({
+  value, editable, onChange, size = 14,
+  meta = PROCESS_STATUS_META, order = PROCESS_STATUS_ORDER
+}) {
   const { t } = useLabels();
-  const v = norm(value);
+  const v = norm(meta, value);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -48,10 +74,10 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  if (!editable) return <StatusBadge value={v} size={size} />;
+  if (!editable) return <StatusBadge value={v} size={size} meta={meta} />;
 
-  const meta = v ? STATUS_META[v] : null;
-  const metaLabel = meta ? t(meta.id, meta.default) : null;
+  const m = v ? meta[v] : null;
+  const metaLabel = m ? t(m.id, m.default) : null;
 
   function pick(next) {
     setOpen(false);
@@ -62,27 +88,27 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
     <span className="status-control" ref={ref} onClick={e => e.stopPropagation()}>
       <button
         type="button"
-        className={`pill-chip edit-chip ${meta ? meta.cls : 'none'}`}
+        className={`pill-chip edit-chip ${m ? m.cls : 'none'}`}
         onClick={() => setOpen(o => !o)}
       >
         <span className="status-btn-main">
-          {meta ? <meta.Icon size={size} /> : <Clock size={size} />}
-          <span>{meta ? metaLabel : t('status.placeholder', 'Status')}</span>
+          {m ? <m.Icon size={size} /> : <Clock size={size} />}
+          <span>{m ? metaLabel : t('status.placeholder', 'Status')}</span>
         </span>
         <ChevronDown size={13} className="status-btn-chevron" />
       </button>
       {open && (
         <div className="status-menu">
-          {STATUS_ORDER.map(k => {
-            const m = STATUS_META[k];
+          {order.map(k => {
+            const opt = meta[k];
             return (
               <button
                 type="button"
                 key={k}
-                className={`status-opt ${m.cls} ${v === k ? 'active' : ''}`}
+                className={`status-opt ${opt.cls} ${v === k ? 'active' : ''}`}
                 onClick={() => pick(k)}
               >
-                <m.Icon size={14} /><span>{t(m.id, m.default)}</span>
+                <opt.Icon size={14} /><span>{t(opt.id, opt.default)}</span>
               </button>
             );
           })}
@@ -91,7 +117,7 @@ export function StatusControl({ value, editable, onChange, size = 14 }) {
             className={`status-opt none ${!v ? 'active' : ''}`}
             onClick={() => pick(null)}
           >
-            <span>{t('status.none', 'Ləğv edilmiş')}</span>
+            <span>{t('status.unset', 'Seçilməyib')}</span>
           </button>
         </div>
       )}

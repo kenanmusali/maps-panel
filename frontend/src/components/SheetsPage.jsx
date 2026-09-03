@@ -5,7 +5,9 @@ import {
 } from './icons.jsx';
 import { LayoutGrid, Ban } from 'lucide-react';
 import { api } from '../api/client.js';
-import { StatusControl, STATUS_META, STATUS_ORDER } from './Status.jsx';
+import {
+  StatusControl, PROCESS_STATUS_META, PROCESS_STATUS_ORDER, DOC_STATUS_META, DOC_STATUS_ORDER
+} from './Status.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
 import { exportSheetToExcel, importSheetRowsFromExcel } from './sheetsExcel.js';
 import SheetColumnFilter, {
@@ -24,30 +26,55 @@ function cachedSheets(kind) {
   return sheetsCache.has(kind) ? sheetsCache.get(kind) : null;
 }
 
-// Kinds that get the hand-typed normativ-sənəd fields (sənədin növü, nəşr,
-// təsdiq tarixi, qərar/protokol) — Normativ Sənədlər (pdfs) və Şablonlar.
-const EXTRA_FIELD_KINDS = new Set(['pdfs', 'templates']);
-const EXTRA_FIELDS = [
-  { key: 'docType', ph: 'Sənədin növü…', label: 'Sənədin növü' },
-  { key: 'edition', ph: 'Nəşr…', label: 'Nəşr' },
-  { key: 'approvalDate', ph: 'gg.aa.iiii', label: 'Təsdiq tarixi' },
-  { key: 'protocol', ph: 'Qərar / Protokol…', label: 'Qərar / Protokol' }
-];
-
-// Excel-style behaviour: always keep a pool of ready-to-type blank rows at
-// the bottom of the sheet. Fresh/near-empty sheets start with a full pool;
-// once you have that many real rows, exactly one blank row trails the last
-// one (fill row 45 → row 46 appears empty, fill 46 → 47 appears, etc).
+// ------------------------------------------------------------------------
+// Per-kind column layout. Each kind gets its own ordered set of columns —
+// the underlying data still lives on the flat row object (title,
+// strukturAdi, subtitle, docType, edition, approvalDate, protocol,
+// pageCount) so the same GridCell / patchRow plumbing works everywhere.
 //
-// Rows are addressed by a fixed `order` number (their permanent visual
-// position), not by array index. Filling row 5 while rows 2/3 stay empty
-// must NEVER bump row 5 up to close the gap — 2 and 3 stay open for later.
-// Deleting a row (real or blank) just leaves that order number empty; it
-// doesn't renumber anything after it.
-const DEFAULT_BLANK_ROWS = 15;
+//   diagrams  → İş axışının adı · Struktur adı · İş axışının nömrəsi
+//   pdfs      → Sənədin adı · Sənədin növü · Struktur adı · Nəşr ·
+//                Təsdiq tarixi · Sənədin nömrəsi · Qərar/Protokol ·
+//                Səhifə sayı        (no Date column)
+//   templates → Formanın adı · Struktur adı · Sənədin adı · Sənədin növü ·
+//                Nəşr · Təsdiq tarixi · Qərar/Protokol · Səhifə sayı
+//                (no Date column)
+// ------------------------------------------------------------------------
+const KIND_COLUMNS = {
+  diagrams: [
+    { field: 'title', label: 'İş axışının adı', cls: 'col-title', ph: () => 'İş axışının adı…', aliases: ['ad', 'title', 'diaqramadı', 'diaqramadi', 'işaxınınadı', 'isaxininadi', 'name'] },
+    { field: 'strukturAdi', label: 'Struktur adı', cls: 'col-struktur', ph: () => 'Qrup adı…', aliases: ['strukturadı', 'strukturadi', 'struktur', 'qrupadı', 'qrupadi', 'group'] },
+    { field: 'subtitle', label: 'İş axışının nömrəsi', cls: 'col-sub', ph: () => 'İkinci ad…', aliases: ['ikinciad', 'subtitle', 'işaxınınnömrəsi', 'isaxininnomresi', 'nömrə', 'nomre', 'code'] }
+  ],
+  pdfs: [
+    { field: 'title', label: 'Sənədin adı', cls: 'col-title', ph: () => 'Sənədin adı…', aliases: ['ad', 'title', 'sənədadı', 'senedadi', 'name'] },
+    { field: 'docType', label: 'Sənədin növü', cls: 'col-extra', ph: () => 'Sənədin növü…', aliases: ['sənədinnövü', 'senedinnovu', 'doctype'] },
+    { field: 'strukturAdi', label: 'Struktur adı', cls: 'col-struktur', ph: () => 'Qrup adı…', aliases: ['strukturadı', 'strukturadi', 'struktur', 'qrupadı', 'qrupadi', 'group'] },
+    { field: 'edition', label: 'Nəşr', cls: 'col-extra', ph: () => 'Nəşr…', aliases: ['nəşr', 'nesr', 'edition'] },
+    { field: 'approvalDate', label: 'Təsdiq tarixi', cls: 'col-extra', ph: () => 'gg.aa.iiii', aliases: ['təsdiqtarixi', 'tesdiqtarixi', 'approvaldate'] },
+    { field: 'subtitle', label: 'Sənədin nömrəsi', cls: 'col-sub', ph: () => 'Sənədin nömrəsi…', aliases: ['sənədinnömrəsi', 'senedinnomresi', 'nömrə', 'nomre', 'subtitle', 'code'] },
+    { field: 'protocol', label: 'Qərar / Protokol', cls: 'col-extra', ph: () => 'Qərar / Protokol…', aliases: ['qərarprotokol', 'qerarprotokol', 'protocol'] },
+    { field: 'pageCount', label: 'Səhifə sayı', cls: 'col-extra', ph: () => 'Səhifə sayı…', aliases: ['səhifəsayı', 'sehifesayi', 'pagecount'] }
+  ],
+  templates: [
+    { field: 'title', label: 'Formanın adı', cls: 'col-title', ph: () => 'Formanın adı…', aliases: ['ad', 'title', 'formanınadı', 'formaninadi', 'şablonadı', 'sablonadi', 'name'] },
+    { field: 'strukturAdi', label: 'Struktur adı', cls: 'col-struktur', ph: () => 'Qrup adı…', aliases: ['strukturadı', 'strukturadi', 'struktur', 'qrupadı', 'qrupadi', 'group'] },
+    { field: 'subtitle', label: 'Sənədin adı', cls: 'col-sub', ph: () => 'Sənədin adı…', aliases: ['sənədinadı', 'senedinadi', 'subtitle'] },
+    { field: 'docType', label: 'Sənədin növü', cls: 'col-extra', ph: () => 'Sənədin növü…', aliases: ['sənədinnövü', 'senedinnovu', 'doctype'] },
+    { field: 'edition', label: 'Nəşr', cls: 'col-extra', ph: () => 'Nəşr…', aliases: ['nəşr', 'nesr', 'edition'] },
+    { field: 'approvalDate', label: 'Təsdiq tarixi', cls: 'col-extra', ph: () => 'gg.aa.iiii', aliases: ['təsdiqtarixi', 'tesdiqtarixi', 'approvaldate'] },
+    { field: 'protocol', label: 'Qərar / Protokol', cls: 'col-extra', ph: () => 'Qərar / Protokol…', aliases: ['qərarprotokol', 'qerarprotokol', 'protocol'] },
+    { field: 'pageCount', label: 'Səhifə sayı', cls: 'col-extra', ph: () => 'Səhifə sayı…', aliases: ['səhifəsayı', 'sehifesayi', 'pagecount'] }
+  ]
+};
+// İş Axışları keeps its Date column; Normativ Sənədlər / Şablonlar don't need it.
+const SHOW_DATE = { diagrams: true, pdfs: false, templates: false };
+const ALL_FIELDS = ['title', 'strukturAdi', 'subtitle', 'docType', 'edition', 'approvalDate', 'protocol', 'pageCount'];
 
 function emptyDraft() {
-  return { title: '', subtitle: '', strukturAdi: '', status: null, extra: {} };
+  const d = { status: null };
+  for (const f of ALL_FIELDS) d[f] = '';
+  return d;
 }
 
 function fmtDate(iso) {
@@ -118,21 +145,15 @@ function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, c
 const KIND_META = {
   diagrams: {
     title: 'İş axışların hesabatı',
-    sub: 'Diaqram kataloqu — İş Axışlarından ayrıca',
-    namePh: 'Yeni İş axışının adı…',
-    subPh: 'İkinci ad…'
+    sub: 'Diaqram kataloqu — İş Axışlarından ayrıca'
   },
   pdfs: {
     title: 'Sənəd kataloqların hesabatı',
-    sub: 'Sənəd kataloqu — Normativ Sənədlərdən ayrıca',
-    namePh: 'Yeni sənəd adı…',
-    subPh: 'İkinci ad…'
+    sub: 'Sənəd kataloqu — Normativ Sənədlərdən ayrıca'
   },
   templates: {
     title: 'Şablon kataloqların hesabatı',
-    sub: 'Şablon kataloqu — Şablonlardan ayrıca',
-    namePh: 'Yeni şablon adı…',
-    subPh: 'İkinci ad…'
+    sub: 'Şablon kataloqu — Şablonlardan ayrıca'
   }
 };
 
@@ -147,7 +168,10 @@ export default function SheetsPage({
   const isAdmin = role === 'admin';
   const isViewer = role === 'viewer' || role === 'editor_2';
   const meta = KIND_META[kind] || KIND_META.diagrams;
-  const hasExtraFields = EXTRA_FIELD_KINDS.has(kind);
+  const columns = KIND_COLUMNS[kind] || KIND_COLUMNS.diagrams;
+  const showDate = SHOW_DATE[kind] !== false;
+  const STATUS_META = kind === 'diagrams' ? PROCESS_STATUS_META : DOC_STATUS_META;
+  const STATUS_ORDER = kind === 'diagrams' ? PROCESS_STATUS_ORDER : DOC_STATUS_ORDER;
   const initialCached = cachedSheets(kind);
 
   const [now, setNow] = useState(new Date());
@@ -167,7 +191,7 @@ export default function SheetsPage({
   // Blank slots the admin explicitly removed from the pool (order numbers).
   // Never lets the count of visible blanks hit zero — see removeBlankSlot.
   const [hiddenBlankOrders, setHiddenBlankOrders] = useState(() => new Set());
-  const [statusFilter, setStatusFilter] = useState(null); // null | 'progress'|'done'|'notdone'|'sign'|'nostatus'
+  const [statusFilter, setStatusFilter] = useState(null); // null | status key | 'nostatus'
   // Excel-style per-column filters: key → Set of allowed values (null = show all)
   const [colFilters, setColFilters] = useState({});
   const [openColFilter, setOpenColFilter] = useState(null); // column key or null
@@ -177,6 +201,8 @@ export default function SheetsPage({
   const nHoverTimerRef = useRef(null);
   const committingRef = useRef(new Set());
   const importInputRef = useRef(null);
+
+  const DEFAULT_BLANK_ROWS = 15;
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30_000);
@@ -238,6 +264,7 @@ export default function SheetsPage({
     } else {
       load({ silent: false });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
 
   // Reset per-sheet blank-row bookkeeping whenever the sheet kind changes.
@@ -297,18 +324,12 @@ export default function SheetsPage({
       const m = STATUS_META[key];
       return m ? t(m.id, m.default) : '';
     };
-    const map = {
-      title: (row) => row.title,
-      strukturAdi: (row) => row.strukturAdi,
-      subtitle: (row) => row.subtitle,
-      status: (row) => (row.status ? labelStatus(row.status) : ''),
-      date: (row) => (row.date ? fmtDate(row.date) : '')
-    };
-    if (hasExtraFields) {
-      for (const f of EXTRA_FIELDS) map[f.key] = (row) => row[f.key];
-    }
+    const map = {};
+    for (const c of columns) map[c.field] = (row) => row[c.field];
+    map.status = (row) => (row.status ? labelStatus(row.status) : '');
+    if (showDate) map.date = (row) => (row.date ? fmtDate(row.date) : '');
     return map;
-  }, [hasExtraFields, t]);
+  }, [columns, showDate, STATUS_META, t]);
 
   const colOptions = useMemo(() => {
     const out = {};
@@ -349,6 +370,7 @@ export default function SheetsPage({
       }
       return true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayRows, deferredStatusFilter, deferredColFilters, colValueGetters]);
 
   const applyColFilter = useCallback((key, next) => {
@@ -399,29 +421,14 @@ export default function SheetsPage({
   }
 
   function blankHasContent(b) {
-    return !!(
-      (b.title || '').trim() ||
-      (b.subtitle || '').trim() ||
-      (b.strukturAdi || '').trim() ||
-      (withStatus && b.status) ||
-      (hasExtraFields && Object.values(b.extra || {}).some(v => (v || '').trim()))
-    );
+    if (withStatus && b.status) return true;
+    return columns.some(c => (b[c.field] || '').trim());
   }
 
   function updateBlank(order, field, value) {
     setBlankDrafts(prev => ({
       ...prev,
       [order]: { ...(prev[order] || emptyDraft()), [field]: value }
-    }));
-  }
-
-  function updateBlankExtra(order, fieldKey, value) {
-    setBlankDrafts(prev => ({
-      ...prev,
-      [order]: {
-        ...(prev[order] || emptyDraft()),
-        extra: { ...((prev[order] || emptyDraft()).extra), [fieldKey]: value }
-      }
     }));
   }
 
@@ -432,14 +439,9 @@ export default function SheetsPage({
     committingRef.current.add(order);
     (async () => {
       try {
-        const row = await api.createSheet(kind, {
-          title: (blank.title || '').trim(),
-          subtitle: (blank.subtitle || '').trim(),
-          strukturAdi: (blank.strukturAdi || '').trim(),
-          status: withStatus ? (blank.status || null) : null,
-          order,
-          ...(hasExtraFields ? blank.extra : {})
-        });
+        const body = { order, status: withStatus ? (blank.status || null) : null };
+        for (const f of ALL_FIELDS) body[f] = (blank[f] || '').trim();
+        const row = await api.createSheet(kind, body);
         setItems(prev => {
           const next = [...prev, row];
           cacheSheets(kind, next);
@@ -517,14 +519,16 @@ export default function SheetsPage({
   const linked = (row) => row.itemId != null || row.processId != null;
 
   const stats = useMemo(() => {
-    const byStatus = { progress: 0, done: 0, notdone: 0, sign: 0 };
+    const byStatus = {};
+    for (const k of STATUS_ORDER) byStatus[k] = 0;
     let nostatus = 0;
     for (const row of items) {
       if (row.status && byStatus[row.status] != null) byStatus[row.status] += 1;
       else nostatus += 1;
     }
     return { total: items.length, byStatus, nostatus };
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, kind]);
 
   function toggleFilter(key) {
     setStatusFilter(prev => (prev === key ? null : key));
@@ -552,10 +556,15 @@ export default function SheetsPage({
       'planlasdirilir': 'progress',
       'planlasdirilmis': 'progress',
       'planned': 'progress',
+      'hazırlıq prosesindədir': 'prep',
+      'hazırlıq prosesində': 'prep',
+      'hazirliq prosesinde': 'prep',
       'təsdiqlənmiş': 'done',
       'təsdiqlənmişdir': 'done',
       'tesdiqlenmis': 'done',
       'tesdiqlenmisdir': 'done',
+      'təsdiq edildi': 'done',
+      'tesdiq edildi': 'done',
       'approved': 'done',
       'done': 'done',
       'müzakirədədir': 'notdone',
@@ -565,38 +574,41 @@ export default function SheetsPage({
       'imza prosesindədir': 'sign',
       'imza prosesində': 'sign',
       'imza prosesinde': 'sign',
-      'signature': 'sign'
+      'signature': 'sign',
+      'ləğv edilmiş': 'cancelled',
+      'legv edilmis': 'cancelled',
+      'ləğv edildi': 'cancelled',
+      'legv edildi': 'cancelled',
+      'cancelled': 'cancelled',
+      'yeniləcək': 'renew',
+      'yenilecek': 'renew',
+      'renew': 'renew'
     };
     if (aliases[s]) return aliases[s];
-    // Soft stem match (Planlaşdır… / Təsdiqlən… / İmza…)
+    // Soft stem match (Planlaşdır… / Təsdiqlən… / İmza… / Ləğv… / Yenilə…)
     if (s.startsWith('planlaşdır') || s.startsWith('planlasdir')) return 'progress';
-    if (s.startsWith('təsdiqlən') || s.startsWith('tesdiqlen')) return 'done';
+    if (s.startsWith('hazırlıq') || s.startsWith('hazirliq')) return 'prep';
+    if (s.startsWith('təsdiqlən') || s.startsWith('tesdiqlen') || s.startsWith('təsdiq') || s.startsWith('tesdiq')) return 'done';
     if (s.startsWith('müzakirə') || s.startsWith('muzakire') || s.startsWith('qaralama')) return 'notdone';
     if (s.startsWith('imza')) return 'sign';
+    if (s.startsWith('ləğv') || s.startsWith('legv')) return 'cancelled';
+    if (s.startsWith('yenilə') || s.startsWith('yenile')) return 'renew';
     return null;
   }
 
   function handleExport() {
-    const headers = [
-      '№',
-      tByText('İş axışının adı'),
-      tByText('Struktur adı'),
-      tByText('İş axışının nömrəsi')
+    const exportColumns = [
+      { label: '№', get: (_row, i) => i + 1 },
+      ...columns.map(c => ({ label: tByText(c.label), get: (row) => row[c.field] || '' }))
     ];
-    if (hasExtraFields) headers.push(...EXTRA_FIELDS.map(f => tByText(f.label)));
-    if (withStatus) headers.push(tByText('Status'));
-    headers.push(tByText('Date'));
+    if (withStatus) exportColumns.push({ label: tByText('Status'), get: (row) => (row.status ? statusLabel(row.status) : '') });
+    if (showDate) exportColumns.push({ label: tByText('Date'), get: (row) => fmtDate(row.date) });
 
     exportSheetToExcel({
       fileTitle: `${tByText(meta.title)}-${kind}`,
       sheetName: tByText(meta.title),
       items,
-      hasExtraFields,
-      extraFields: EXTRA_FIELDS,
-      withStatus,
-      statusLabel,
-      fmtDate,
-      headers
+      columns: exportColumns
     });
   }
 
@@ -611,9 +623,10 @@ export default function SheetsPage({
     if (!file || !isAdmin) return;
     setImportBusy(true);
     try {
+      const importColumns = columns.map(c => ({ field: c.field, label: tByText(c.label), aliases: c.aliases }));
       const rows = await importSheetRowsFromExcel(file, {
-        hasExtraFields,
-        extraFields: EXTRA_FIELDS,
+        columns: importColumns,
+        withStatus,
         statusKeyFromLabel
       });
       if (!rows.length) {
@@ -626,19 +639,9 @@ export default function SheetsPage({
       const created = [];
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
-        const row = await api.createSheet(kind, {
-          title: r.title,
-          subtitle: r.subtitle,
-          strukturAdi: r.strukturAdi,
-          status: withStatus ? (r.status || null) : null,
-          order: baseOrder + i + 1,
-          ...(hasExtraFields ? {
-            docType: r.docType || '',
-            edition: r.edition || '',
-            approvalDate: r.approvalDate || '',
-            protocol: r.protocol || ''
-          } : {})
-        });
+        const body = { order: baseOrder + i + 1, status: withStatus ? (r.status || null) : null };
+        for (const f of ALL_FIELDS) body[f] = r[f] || '';
+        const row = await api.createSheet(kind, body);
         created.push(row);
       }
       setItems(prev => {
@@ -654,18 +657,6 @@ export default function SheetsPage({
     }
   }
 
-  function strukturInput(value, onChange, onCommit, placeholder, disabled) {
-    return (
-      <GridCell
-        value={value}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={onChange}
-        onCommit={onCommit}
-      />
-    );
-  }
-
   const linkedCount = useMemo(
     () => items.filter(x => x.itemId != null || x.processId != null).length,
     [items]
@@ -673,14 +664,10 @@ export default function SheetsPage({
 
   const isBlankRow = (row) => {
     if (row.itemId != null || row.processId != null) return false; // never touch linked rows here
-    if ((row.title || '').trim()) return false;
-    if ((row.subtitle || '').trim()) return false;
-    if ((row.strukturAdi || '').trim()) return false;
     if (row.status) return false;
-    if (hasExtraFields && EXTRA_FIELDS.some(f => (row[f.key] || '').trim())) return false;
-    return true;
+    return !columns.some(c => (row[c.field] || '').trim());
   };
-  const blankCount = useMemo(() => items.filter(isBlankRow).length, [items, hasExtraFields]);
+  const blankCount = useMemo(() => items.filter(isBlankRow).length, [items, columns]);
 
   async function handleClearLinked() {
     if (!isAdmin || linkedCount === 0) return;
@@ -718,22 +705,14 @@ export default function SheetsPage({
   }
 
   async function handleClearAll() {
-    if (!isAdmin || items.length === 0 || busy || importBusy) return;
-    if (!confirm(
-      `${items.length} sətirin hamısı Sheets-dən silinsin?\n` +
-      `Bu geri qaytarılmır. Əsas diaqram/sənəd siyahısına toxunulmur.`
-    )) return;
+    if (!isAdmin || items.length === 0) return;
+    if (!confirm(`Bu Sheets-in HAMISI (${items.length} sətir) silinsin? Bu geri qaytarılmır.`)) return;
     setBusy(true);
     try {
       await api.clearAllSheets(kind);
-      cacheSheets(kind, []);
-      setItems([]);
-      setBlankDrafts({});
       setHiddenBlankOrders(new Set());
-      setColFilters({});
-      setOpenColFilter(null);
-      setStatusFilter(null);
-      setNTrashReady(false);
+      setBlankDrafts({});
+      await load({ silent: true });
     } catch (e) {
       alert('Xəta: ' + (e.message || 'Silinmədi'));
       await load({ silent: true });
@@ -741,6 +720,8 @@ export default function SheetsPage({
       setBusy(false);
     }
   }
+
+  const totalCols = 1 /* № */ + columns.length + (withStatus ? 1 : 0) + (showDate ? 1 : 0) + (isAdmin ? 1 : 0);
 
   return (
     <div className="sheets-page">
@@ -855,7 +836,7 @@ export default function SheetsPage({
                 <Ban size={18} />
                 <span className="sheets-stat-text">
                   <span className="sheets-stat-num">{stats.nostatus}</span>
-                  <span className="sheets-stat-label">{t('status.none', 'Ləğv edilmiş')}</span>
+                  <span className="sheets-stat-label">{t('status.unset', 'Seçilməyib')}</span>
                 </span>
               </button>
             )}
@@ -920,14 +901,9 @@ export default function SheetsPage({
                           '№'
                         )}
                       </th>
-                      {renderColHeader('title', tByText('İş axışının adı'), 'col-title')}
-                      {renderColHeader('strukturAdi', tByText('Struktur adı'), 'col-struktur')}
-                      {renderColHeader('subtitle', tByText('İş axışının nömrəsi'), 'col-sub')}
-                      {hasExtraFields && EXTRA_FIELDS.map(f =>
-                        renderColHeader(f.key, tByText(f.label), 'col-extra')
-                      )}
+                      {columns.map(c => renderColHeader(c.field, tByText(c.label), c.cls))}
                       {withStatus && renderColHeader('status', tByText('Status'), 'col-status')}
-                      {renderColHeader('date', tByText('Date'), 'col-date')}
+                      {showDate && renderColHeader('date', tByText('Date'), 'col-date')}
                       {isAdmin && <th className="col-act" aria-label="Actions" />}
                     </tr>
                   </thead>
@@ -940,39 +916,12 @@ export default function SheetsPage({
                           onBlur={(e) => handleBlankRowBlur(e, order)}
                         >
                           <td className="col-n">{order}</td>
-                          <td className="col-title">
-                            <GridCell
-                              value={row.title}
-                              placeholder=""
-                              onChange={(v) => updateBlank(order, 'title', v)}
-                              onCommit={() => commitBlankRow(order)}
-                              commitOnBlur={false}
-                            />
-                          </td>
-                          <td className="col-struktur">
-                            <GridCell
-                              value={row.strukturAdi}
-                              placeholder=""
-                              onChange={(v) => updateBlank(order, 'strukturAdi', v)}
-                              onCommit={() => commitBlankRow(order)}
-                              commitOnBlur={false}
-                            />
-                          </td>
-                          <td className="col-sub">
-                            <GridCell
-                              value={row.subtitle}
-                              placeholder=""
-                              onChange={(v) => updateBlank(order, 'subtitle', v)}
-                              onCommit={() => commitBlankRow(order)}
-                              commitOnBlur={false}
-                            />
-                          </td>
-                          {hasExtraFields && EXTRA_FIELDS.map(f => (
-                            <td className="col-extra" key={f.key}>
+                          {columns.map(c => (
+                            <td className={c.cls} key={c.field}>
                               <GridCell
-                                value={row.extra[f.key]}
+                                value={row[c.field]}
                                 placeholder=""
-                                onChange={(v) => updateBlankExtra(order, f.key, v)}
+                                onChange={(v) => updateBlank(order, c.field, v)}
                                 onCommit={() => commitBlankRow(order)}
                                 commitOnBlur={false}
                               />
@@ -983,6 +932,8 @@ export default function SheetsPage({
                               <StatusControl
                                 value={row.status}
                                 editable
+                                meta={STATUS_META}
+                                order={STATUS_ORDER}
                                 onChange={(status) => {
                                   updateBlank(order, 'status', status);
                                   commitBlankRow(order, { ...row, status });
@@ -990,7 +941,7 @@ export default function SheetsPage({
                               />
                             </td>
                           )}
-                          <td className="col-date">{fmtClockDate(now)}</td>
+                          {showDate && <td className="col-date">{fmtClockDate(now)}</td>}
                           <td className="col-act">
                             {visibleBlankCount > 1 && (
                               <button
@@ -1007,69 +958,21 @@ export default function SheetsPage({
                       ) : (
                         <tr key={row.id} className={linked(row) ? 'linked' : 'sheet-only'}>
                           <td className="col-n">{order}</td>
-                          <td className="col-title">
-                            {isAdmin ? (
-                              <GridCell
-                                value={row.title}
-                                placeholder="—"
-                                onChange={(v) => setItems(prev => prev.map(x =>
-                                  Number(x.id) === Number(row.id) ? { ...x, title: v } : x
-                                ))}
-                                onCommit={(v) => {
-                                  if (v !== (row.title || '')) patchRow(row.id, { title: v });
-                                }}
-                              />
-                            ) : (
-                              <span className="sheets-cell-text">{row.title || '—'}</span>
-                            )}
-                          </td>
-                          <td className="col-struktur">
-                            {isAdmin ? (
-                              strukturInput(
-                                row.strukturAdi || '',
-                                (v) => setItems(prev => prev.map(x =>
-                                  Number(x.id) === Number(row.id) ? { ...x, strukturAdi: v } : x
-                                )),
-                                (v) => {
-                                  if (v !== (row.strukturAdi || '')) patchRow(row.id, { strukturAdi: v });
-                                },
-                                tByText('Qrup adı…')
-                              )
-                            ) : (
-                              <span className="sheets-cell-text">{row.strukturAdi || '—'}</span>
-                            )}
-                          </td>
-                          <td className="col-sub">
-                            {isAdmin ? (
-                              <GridCell
-                                value={row.subtitle}
-                                placeholder="—"
-                                onChange={(v) => setItems(prev => prev.map(x =>
-                                  Number(x.id) === Number(row.id) ? { ...x, subtitle: v } : x
-                                ))}
-                                onCommit={(v) => {
-                                  if (v !== (row.subtitle || '')) patchRow(row.id, { subtitle: v });
-                                }}
-                              />
-                            ) : (
-                              <span className="sheets-cell-text">{row.subtitle || '—'}</span>
-                            )}
-                          </td>
-                          {hasExtraFields && EXTRA_FIELDS.map(f => (
-                            <td className="col-extra" key={f.key}>
+                          {columns.map(c => (
+                            <td className={c.cls} key={c.field}>
                               {isAdmin ? (
                                 <GridCell
-                                  value={row[f.key]}
-                                  placeholder=""
+                                  value={row[c.field]}
+                                  placeholder="—"
                                   onChange={(v) => setItems(prev => prev.map(x =>
-                                    Number(x.id) === Number(row.id) ? { ...x, [f.key]: v } : x
+                                    Number(x.id) === Number(row.id) ? { ...x, [c.field]: v } : x
                                   ))}
                                   onCommit={(v) => {
-                                    if (v !== (row[f.key] || '')) patchRow(row.id, { [f.key]: v });
+                                    if (v !== (row[c.field] || '')) patchRow(row.id, { [c.field]: v });
                                   }}
                                 />
                               ) : (
-                                <span className="sheets-cell-text">{row[f.key] || '—'}</span>
+                                <span className="sheets-cell-text">{row[c.field] || '—'}</span>
                               )}
                             </td>
                           ))}
@@ -1078,11 +981,13 @@ export default function SheetsPage({
                               <StatusControl
                                 value={row.status}
                                 editable={isAdmin && !isViewer}
+                                meta={STATUS_META}
+                                order={STATUS_ORDER}
                                 onChange={(status) => patchRow(row.id, { status })}
                               />
                             </td>
                           )}
-                          <td className="col-date">{fmtDate(row.date)}</td>
+                          {showDate && <td className="col-date">{fmtDate(row.date)}</td>}
                           {isAdmin && (
                             <td className="col-act">
                               <button
@@ -1100,14 +1005,14 @@ export default function SheetsPage({
                     ))}
                     {items.length === 0 && !isAdmin && (
                       <tr>
-                        <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
+                        <td colSpan={totalCols} className="sheets-empty-cell">
                           Sheets boşdur
                         </td>
                       </tr>
                     )}
                     {items.length > 0 && filteredDisplayRows.every(r => r.isBlank) && (
                       <tr>
-                        <td colSpan={(withStatus ? 7 : 6) + (hasExtraFields ? EXTRA_FIELDS.length : 0)} className="sheets-empty-cell">
+                        <td colSpan={totalCols} className="sheets-empty-cell">
                           {tByText('Bu filtrə uyğun sətir yoxdur')}
                         </td>
                       </tr>

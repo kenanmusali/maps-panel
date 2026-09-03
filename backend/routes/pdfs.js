@@ -272,7 +272,7 @@ router.post('/:id/unarchive', requireAdmin, async (req, res, next) => {
 });
 
 /* =========================== STATUS =========================== */
-const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
+const ALLOWED_STATUS = ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew'];
 
 // Set (or clear) a PDF's status. body: { status: 'progress'|'done'|'notdone'|null }
 router.put('/:id/status', requireAdmin, async (req, res, next) => {

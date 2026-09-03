@@ -257,7 +257,8 @@ router.post('/:id/unarchive', async (req, res, next) => {
 });
 
 /* =========================== PROCESSES =========================== */
-const ALLOWED_STATUS = ['progress', 'done', 'notdone', 'sign'];
+// İş Axışları statuses (no "sign" here — that's Normativ/Şablon only).
+const ALLOWED_STATUS = ['progress', 'prep', 'notdone', 'done', 'cancelled'];
 
 router.get('/:id', async (req, res, next) => {
   try {

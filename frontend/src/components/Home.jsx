@@ -209,8 +209,10 @@ export default function Home({ onOpen, onLogout, onBack, onOpenSheets, focusProc
     const p = parentId == null ? null : Number(parentId);
     return groups.filter(g => normPid(g) === p);
   }
+  // Cancelled (Ləğv edilmiş) diagrams are hidden from this list entirely —
+  // they stay reachable/editable only from the Sheets page.
   function itemsOfGroup(gid) {
-    return processes.filter(p => p && Number(p.groupId) === Number(gid));
+    return processes.filter(p => p && Number(p.groupId) === Number(gid) && p.status !== 'cancelled');
   }
   function groupNumber(g) {
     const parts = [];

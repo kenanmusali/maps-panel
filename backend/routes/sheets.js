@@ -10,6 +10,7 @@ import {
   clearAllRows,
   syncFromItem,
   ALLOWED_STATUS,
+  ALLOWED_STATUS_BY_KIND,
   EXTRA_FIELDS
 } from '../services/sheetsStore.js';
 
@@ -65,7 +66,8 @@ router.post('/:kind/sync', requireAdmin, async (req, res, next) => {
     const { itemId, processId, title, subtitle, status, sheetId, strukturAdi } = req.body || {};
     const id = itemId != null ? itemId : processId;
     if (id == null) return res.status(400).json({ error: 'itemId teleb olunur' });
-    if (status != null && status !== '' && !ALLOWED_STATUS.includes(String(status))) {
+    const allowed = ALLOWED_STATUS_BY_KIND[req.params.kind] || ALLOWED_STATUS;
+    if (status != null && status !== '' && !allowed.includes(String(status))) {
       return res.status(400).json({ error: 'Yanlış status' });
     }
     const row = await syncFromItem(req.params.kind, {

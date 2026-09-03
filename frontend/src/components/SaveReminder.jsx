@@ -1,8 +1,3 @@
-// SaveReminder.jsx
-// Periodic "don't forget to save" reminder shown while editing a diagram.
-// Fires every N minutes (user-adjustable 1..30, default 10) whenever there are
-// unsaved changes. Settings (interval + sound on/off) live in localStorage, so
-// they persist across diagrams and browser sessions on the same machine.
 import { useState, useEffect, useRef } from 'react';
 import { Bell, BellOff, Settings, Volume2, VolumeX, Save, X, Clock } from './icons.jsx';
 import { useLabels } from '../labels/LabelsContext.jsx';
@@ -29,7 +24,6 @@ export default function SaveReminder({ editMode, dirty, onSave }) {
   const wrapRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Refs so the interval reads live values without being re-created every edit.
   const editRef = useRef(editMode);
   const dirtyRef = useRef(dirty);
   const soundRef = useRef(soundOn);
@@ -37,11 +31,9 @@ export default function SaveReminder({ editMode, dirty, onSave }) {
   useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
   useEffect(() => { soundRef.current = soundOn; }, [soundOn]);
 
-  // Persist settings.
   useEffect(() => { localStorage.setItem(INTERVAL_KEY, String(intervalMin)); }, [intervalMin]);
   useEffect(() => { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); }, [soundOn]);
 
-  // The reminder ticker — only re-created when the interval changes.
   useEffect(() => {
     const ms = intervalMin * 60 * 1000;
     const id = setInterval(() => {
@@ -53,11 +45,9 @@ export default function SaveReminder({ editMode, dirty, onSave }) {
     return () => clearInterval(id);
   }, [intervalMin]);
 
-  // Nothing left to nag about once saved or once editing stops.
   useEffect(() => { if (!dirty) setToastOpen(false); }, [dirty]);
   useEffect(() => { if (!editMode) { setToastOpen(false); setSettingsOpen(false); } }, [editMode]);
 
-  // Close the settings dropdown on an outside click.
   useEffect(() => {
     if (!settingsOpen) return;
     function onDown(e) {
@@ -80,7 +70,6 @@ export default function SaveReminder({ editMode, dirty, onSave }) {
     }
   }
 
-  // Fallback chime if the mp3 can't play (autoplay quirks / missing file).
   function synthChime() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;

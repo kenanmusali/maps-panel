@@ -3,6 +3,11 @@
 // fields…) to/from a plain .xlsx workbook. This is separate from excel.js,
 // which exports/imports a diagram's canvas (lanes/nodes/edges).
 //
+// Both export and import are COLUMN-DRIVEN: the caller (SheetsPage) passes
+// the exact ordered list of columns for the current kind (İş Axışları /
+// Normativ Sənədlər / Şablonlar each have their own order + labels), so
+// this file has no hardcoded assumptions about which fields exist.
+//
 // Import is always ADDITIVE: parsed rows are handed back to the caller as
 // plain objects, which the page then creates one-by-one as new blank sheet
 // rows. Existing rows are never touched or removed.
@@ -78,36 +83,11 @@ function cellStr(v) {
 }
 
 /* ============================ EXPORT ============================ */
-export async function exportSheetToExcel({
-  fileTitle,
-  sheetName,
-  items,
-  hasExtraFields,
-  extraFields,
-  withStatus,
-  statusLabel,
-  fmtDate,
-  // Optional UI labels so Excel headers match the Sheets table
-  // (Diaqram adı / Struktur adı / …). Falls back to stable defaults.
-  headers: headerOverride
-}) {
-  const header = headerOverride?.length
-    ? [...headerOverride]
-    : (() => {
-        const h = ['№', 'Ad', 'Struktur adı', 'İkinci ad'];
-        if (hasExtraFields) h.push(...extraFields.map(f => f.label));
-        if (withStatus) h.push('Status');
-        h.push('Tarix');
-        return h;
-      })();
-
-  const rows = (items || []).map((row, i) => {
-    const r = [i + 1, row.title || '', row.strukturAdi || '', row.subtitle || ''];
-    if (hasExtraFields) extraFields.forEach(f => r.push(row[f.key] || ''));
-    if (withStatus) r.push(row.status ? statusLabel(row.status) : '');
-    r.push(fmtDate ? fmtDate(row.date) : (row.date || ''));
-    return r;
-  });
+// columns: [{ label, get: (row, i) => string|number }] — includes № only if
+// you want it (SheetsPage always adds it as the first column itself).
+export async function exportSheetToExcel({ fileTitle, sheetName, items, columns }) {
+  const header = columns.map(c => c.label);
+  const rows = (items || []).map((row, i) => columns.map(c => c.get(row, i)));
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet((sheetName || 'Sheets').slice(0, 31), {
@@ -170,10 +150,12 @@ export async function exportSheetToExcel({
 }
 
 /* ============================ IMPORT ============================ */
-// Returns an array of plain row objects: { title, strukturAdi, subtitle, status?, ...extras }
-// ALWAYS one object per Excel data row (duplicates kept). Never merges/replaces
-// by matching text — caller creates new sheet rows for each.
-export async function importSheetRowsFromExcel(file, { hasExtraFields, extraFields, statusKeyFromLabel }) {
+// columns: [{ field, label, aliases: [...] }] in the same order as the
+// on-screen table for this kind.
+// Returns an array of plain row objects: { [field]: value, status? }.
+// ALWAYS one object per Excel data row (duplicates kept). Never merges/
+// replaces by matching text — caller creates new sheet rows for each.
+export async function importSheetRowsFromExcel(file, { columns, withStatus, statusKeyFromLabel }) {
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -184,7 +166,7 @@ export async function importSheetRowsFromExcel(file, { hasExtraFields, extraFiel
 
   const rawHeaders = (aoa[0] || []).map((h) => String(h ?? ''));
   const headers = rawHeaders.map(norm);
-  const idx = (names) => {
+  const findIdx = (names) => {
     for (const n of names) {
       const i = headers.indexOf(norm(n));
       if (i !== -1) return i;
@@ -192,82 +174,59 @@ export async function importSheetRowsFromExcel(file, { hasExtraFields, extraFiel
     return -1;
   };
 
-  // Match UI labels AND export defaults ("Ad", "Diaqram adı", "İş axışının adı"…)
-  let iTitle = idx([
-    'ad', 'title', 'diaqramadı', 'diaqramadi',
-    'işaxınınadı', 'isaxininadi', 'işaxiniadı',
-    'sənədadı', 'senedadi', 'şablonadı', 'sablonadi',
-    'name'
-  ]);
-  let iStruktur = idx([
-    'strukturadı', 'strukturadi', 'struktur', 'qrupadı', 'qrupadi', 'group'
-  ]);
-  let iSub = idx([
-    'ikinciad', 'ikinciadqısa', 'ikinciadqisa', 'subtitle',
-    'işaxınınnömrəsi', 'isaxininnomresi', 'nömrə', 'nomre', 'code'
-  ]);
-  let iStatus = idx(['status', 'vəziyyət', 'veziyyet']);
-  let iDate = idx(['tarix', 'date', 'tarixi']);
+  const fieldIdx = {}; // field -> column index in the sheet (-1 = not found yet)
+  for (const c of columns) fieldIdx[c.field] = -1;
 
-  const extraIdx = {};
-  if (hasExtraFields) {
-    for (const f of extraFields) extraIdx[f.key] = idx([f.label, f.key]);
+  // Pass 1 — exact label match only (this kind's own export headers), so a
+  // field's own configured label always wins over another field's alias
+  // (e.g. templates' "Sənədin adı" subtitle vs pdfs' generic title aliases).
+  for (const c of columns) fieldIdx[c.field] = findIdx([c.label]);
+
+  // Pass 2 — fall back to the broader alias list for anything still unmatched.
+  for (const c of columns) {
+    if (fieldIdx[c.field] === -1 && c.aliases?.length) {
+      fieldIdx[c.field] = findIdx(c.aliases);
+    }
   }
 
-  // Positional fallback when headers don't match (different UI / hand-made file):
-  // № | title | struktur | subtitle | [extras…] | status | date
-  const used = new Set([iTitle, iStruktur, iSub, iStatus, iDate].filter((i) => i >= 0));
-  Object.values(extraIdx).forEach((i) => { if (i >= 0) used.add(i); });
+  let iStatus = withStatus ? findIdx(['status', 'vəziyyət', 'veziyyet']) : -1;
+  let iDate = findIdx(['tarix', 'date', 'tarixi']);
 
+  // Positional fallback for anything headers didn't match, in the same
+  // order as `columns` (which mirrors the on-screen table): № | col1 | col2 | … | status | date
+  const used = new Set([...Object.values(fieldIdx), iStatus, iDate].filter((i) => i >= 0));
   const looksLikeNo = (h) => /^(№|no|n|#)$/i.test(String(h || '').trim()) || norm(h) === 'n';
   let col = 0;
   if (looksLikeNo(rawHeaders[0]) || headers[0] === 'n' || headers[0] === '') col = 1;
 
-  if (iTitle < 0) { while (used.has(col)) col += 1; iTitle = col; used.add(col); col += 1; }
-  if (iStruktur < 0) { while (used.has(col)) col += 1; iStruktur = col; used.add(col); col += 1; }
-  if (iSub < 0) { while (used.has(col)) col += 1; iSub = col; used.add(col); col += 1; }
-  if (hasExtraFields) {
-    for (const f of extraFields) {
-      if (extraIdx[f.key] < 0) {
-        while (used.has(col)) col += 1;
-        extraIdx[f.key] = col;
-        used.add(col);
-        col += 1;
-      }
+  for (const c of columns) {
+    if (fieldIdx[c.field] < 0) {
+      while (used.has(col)) col += 1;
+      fieldIdx[c.field] = col;
+      used.add(col);
+      col += 1;
     }
   }
-  if (iStatus < 0) { while (used.has(col)) col += 1; iStatus = col; used.add(col); col += 1; }
+  if (withStatus && iStatus < 0) { while (used.has(col)) col += 1; iStatus = col; used.add(col); col += 1; }
   if (iDate < 0) { while (used.has(col)) col += 1; iDate = col; used.add(col); }
 
   const out = [];
   for (const r of aoa.slice(1)) {
     if (!r || r.every(v => v == null || String(v).trim() === '')) continue;
-    const title = iTitle >= 0 ? cellStr(r[iTitle]) : '';
-    const strukturAdi = iStruktur >= 0 ? cellStr(r[iStruktur]) : '';
-    const subtitle = iSub >= 0 ? cellStr(r[iSub]) : '';
-    // Keep EVERY row — even if title/struktur duplicates an earlier row.
-    // Empty title alone is still imported when any other field has text.
-    if (!title && !strukturAdi && !subtitle) {
-      let anyExtra = false;
-      if (hasExtraFields) {
-        for (const f of extraFields) {
-          const i = extraIdx[f.key];
-          if (i >= 0 && cellStr(r[i])) { anyExtra = true; break; }
-        }
-      }
-      const st = iStatus >= 0 ? cellStr(r[iStatus]) : '';
-      if (!anyExtra && !st) continue;
-    }
 
-    const row = { title, strukturAdi, subtitle };
-    if (hasExtraFields) {
-      for (const f of extraFields) {
-        const i = extraIdx[f.key];
-        if (i >= 0) row[f.key] = cellStr(r[i]);
-      }
+    const row = {};
+    let anyValue = false;
+    for (const c of columns) {
+      const i = fieldIdx[c.field];
+      const v = i >= 0 ? cellStr(r[i]) : '';
+      row[c.field] = v;
+      if (v) anyValue = true;
     }
-    if (iStatus >= 0 && statusKeyFromLabel) {
-      const key = statusKeyFromLabel(cellStr(r[iStatus]));
+    const stRaw = iStatus >= 0 ? cellStr(r[iStatus]) : '';
+    if (!anyValue && !stRaw) continue; // fully empty row (besides date) — skip
+
+    if (withStatus && stRaw && statusKeyFromLabel) {
+      const key = statusKeyFromLabel(stRaw);
       if (key) row.status = key;
     }
     out.push(row);

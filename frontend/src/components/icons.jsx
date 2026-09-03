@@ -60,5 +60,9 @@ export {
   FileSpreadsheet,
   FileText as FilePdf,
   Check,
-  Copy
+  Copy,
+  Hammer,
+  RefreshCw,
+  MessageCircleQuestion,
+  Ban
 } from 'lucide-react';

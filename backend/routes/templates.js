@@ -271,6 +271,34 @@ router.post('/:id/unarchive', requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* =========================== STATUS =========================== */
+const ALLOWED_STATUS = ['progress', 'prep', 'notdone', 'sign', 'done', 'cancelled', 'renew'];
+
+// Set (or clear) a template's status. body: { status: '...'|null }
+router.put('/:id/status', requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const raw = req.body?.status;
+    const status = raw == null || raw === '' ? null : String(raw);
+    if (status !== null && !ALLOWED_STATUS.includes(status)) {
+      return res.status(400).json({ error: 'Yanlış status' });
+    }
+    const idx = await readIndex();
+    const entry = idx.pdfs.find(p => Number(p.id) === id);
+    if (!entry) return res.status(404).json({ error: 'Template not found' });
+    if (status === null) delete entry.status; else entry.status = status;
+    await writeIndex(idx, `Set status for template ${id}`, req.user);
+    await syncFromItem('templates', {
+      itemId: id,
+      title: entry.title,
+      subtitle: entry.subtitle || '',
+      status,
+      strukturAdi: idx.groups.find(g => Number(g.id) === Number(entry.groupId))?.name || ''
+    }, req.user).catch((e) => console.error('[sheets sync template status]', e.message));
+    res.json({ id, status });
+  } catch (e) { next(e); }
+});
+
 /* =========================== PDF FILE STREAM =========================== */
 router.get('/:id/file', async (req, res, next) => {
   try {
