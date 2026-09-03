@@ -928,6 +928,17 @@
       "groupId": 11,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:01.500Z"
+    },
+    {
+      "id": 77,
+      "title": "Layihələrin İdarə Olunmasi Ofisinin Əsasnaməsi",
+      "subtitle": "ALM-İMS-LİOO-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 11,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:34:03.029Z"
     }
   ],
   "files": []
