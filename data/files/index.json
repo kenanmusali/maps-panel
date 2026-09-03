@@ -480,6 +480,17 @@
       "groupId": 27,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:04.362Z"
+    },
+    {
+      "id": 37,
+      "title": "İctimaiyyətlə əlaqələr və marketinq şöbəsi əsasnaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 27,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:33:05.454Z"
     }
   ],
   "files": []
