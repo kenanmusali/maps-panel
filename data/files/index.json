@@ -278,6 +278,17 @@
       "groupId": 3,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:32:39.439Z"
+    },
+    {
+      "id": 19,
+      "title": "Beynəlxalq daşımalar departamentinin əsasnaməsi",
+      "subtitle": "ALM-İMS-BDD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 3,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:40.624Z"
     }
   ],
   "files": []
