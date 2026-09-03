@@ -983,6 +983,17 @@
       "groupId": 13,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:10.517Z"
+    },
+    {
+      "id": 82,
+      "title": "Maliyyə hesabatlılığı və təhlil proseslərinin tənzimlənməsi proseduru",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 13,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:34:12.102Z"
     }
   ],
   "files": []
