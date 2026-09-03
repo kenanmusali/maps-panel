@@ -142,6 +142,17 @@
       "groupId": 4,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:29.328Z"
+    },
+    {
+      "id": 14,
+      "title": "İşgüzar görüşlərin idarəedilməsi proseduru",
+      "subtitle": "PR/BD/ 01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 4,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:30.643Z"
     }
   ],
   "groups": [
