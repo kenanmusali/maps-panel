@@ -164,6 +164,17 @@
       "groupId": 4,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:31.956Z"
+    },
+    {
+      "id": 16,
+      "title": "Daxili audit xidməti haqqinda əsasnamə",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 5,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:33.382Z"
     }
   ],
   "groups": [
@@ -182,6 +193,10 @@
     {
       "id": 4,
       "name": "Biznes departamenti"
+    },
+    {
+      "id": 5,
+      "name": "Daxili audit departamenti"
     }
   ]
 }
