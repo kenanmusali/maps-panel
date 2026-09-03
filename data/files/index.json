@@ -693,6 +693,17 @@
       "groupId": 9,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:33:31.893Z"
+    },
+    {
+      "id": 56,
+      "title": "Təlim və İnkişaf Proseduru",
+      "subtitle": "ALC-IMS-PRC-HRAD-002",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:33:33.146Z"
     }
   ],
   "files": []
