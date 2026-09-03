@@ -112,13 +112,6 @@ export function StatusControl({
               </button>
             );
           })}
-          <button
-            type="button"
-            className={`status-opt none ${!v ? 'active' : ''}`}
-            onClick={() => pick(null)}
-          >
-            <span>{t('status.unset', 'Seçilməyib')}</span>
-          </button>
         </div>
       )}
     </span>

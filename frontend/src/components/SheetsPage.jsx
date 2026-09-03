@@ -826,20 +826,6 @@ export default function SheetsPage({
                 </button>
               );
             })}
-            {withStatus && (
-              <button
-                type="button"
-                className={`sheets-stat-card nostatus ${statusFilter === 'nostatus' ? 'active' : ''}`}
-                onClick={() => toggleFilter('nostatus')}
-                disabled={loadUi.show}
-              >
-                <Ban size={18} />
-                <span className="sheets-stat-text">
-                  <span className="sheets-stat-num">{stats.nostatus}</span>
-                  <span className="sheets-stat-label">{t('status.unset', 'Seçilməyib')}</span>
-                </span>
-              </button>
-            )}
           </div>
         )}
 
