@@ -1297,6 +1297,17 @@
       "groupId": 24,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:22:18.340Z"
+    },
+    {
+      "id": 119,
+      "title": "Güzəşt Proseduru",
+      "subtitle": "ALM-IMS-PRD-BD-03",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 24,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T12:22:19.791Z"
     }
   ],
   "groups": [
