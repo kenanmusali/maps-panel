@@ -406,6 +406,17 @@
       "groupId": 12,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:08.039Z"
+    },
+    {
+      "id": 38,
+      "title": "Vəzifə Kateqoriyalari Üzrə Səriştə Tələbi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:20:09.309Z"
     }
   ],
   "groups": [
