@@ -373,6 +373,17 @@
       "groupId": 12,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:02.539Z"
+    },
+    {
+      "id": 35,
+      "title": "İşə Qəbul Prosesi",
+      "subtitle": "PS/İMS/İR/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:20:04.526Z"
     }
   ],
   "groups": [
