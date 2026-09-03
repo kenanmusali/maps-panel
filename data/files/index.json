@@ -120,6 +120,17 @@
       "groupId": 3,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T12:19:26.749Z"
+    },
+    {
+      "id": 12,
+      "title": "Biznes Departamentinin Əsasnaməsi",
+      "subtitle": "Ə/ALM/17",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 4,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:27.986Z"
     }
   ],
   "groups": [
@@ -134,6 +145,10 @@
     {
       "id": 3,
       "name": "Beynəlxalq daşımalar departamenti"
+    },
+    {
+      "id": 4,
+      "name": "Biznes departamenti"
     }
   ]
 }
