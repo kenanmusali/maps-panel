@@ -1218,6 +1218,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:45.857Z"
+    },
+    {
+      "id": 103,
+      "title": "Yükləmə boşaltma əməliyyatlarinda təhlükəsizlik tələbləri",
+      "subtitle": "İT/YBƏ /01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:34:48.003Z"
     }
   ],
   "files": []
