@@ -267,6 +267,10 @@ export default function SheetsPage({
   const nHoverTimerRef = useRef(null);
   const committingRef = useRef(new Set());
   const importInputRef = useRef(null);
+  // Folder names already seeded into a blank slot's Struktur adı, so every
+  // empty folder gets shown exactly once (not re-added on every re-render/
+  // re-fetch) — see the "seed empty folders" effect below.
+  const seededGroupsRef = useRef(new Set());
 
   const DEFAULT_BLANK_ROWS = 15;
 
@@ -367,7 +371,37 @@ export default function SheetsPage({
     setColFilters({});
     setOpenColFilter(null);
     setNTrashReady(false);
+    seededGroupsRef.current = new Set();
   }, [kind]);
+
+  // Every folder from the matching section should be visible on the sheet,
+  // even ones with zero documents yet — otherwise there's no way to tell
+  // an empty folder even exists here. For each folder that isn't already
+  // represented by a real row, drop its name into an unused blank slot's
+  // Struktur adı so it shows up in the table (still just a draft — nothing
+  // is saved to the sheet until the admin actually types something in it).
+  useEffect(() => {
+    if (!isAdmin || !sectionGroups.length) return;
+    const covered = new Set(items.map(x => (x.strukturAdi || '').trim()).filter(Boolean));
+    const missing = sectionGroups.filter(
+      (name) => !covered.has(name) && !seededGroupsRef.current.has(name)
+    );
+    if (!missing.length) return;
+
+    setBlankDrafts((prev) => {
+      const next = { ...prev };
+      const used = new Set(items.map(x => Number(x.order)));
+      const hasContent = (b) => (withStatus && b?.status) || columns.some(c => (b?.[c.field] || '').trim());
+      let order = 1;
+      for (const name of missing) {
+        while (used.has(order) || hiddenBlankOrders.has(order) || hasContent(next[order])) order += 1;
+        next[order] = { ...emptyDraft(), strukturAdi: name };
+        used.add(order);
+        seededGroupsRef.current.add(name);
+      }
+      return next;
+    });
+  }, [isAdmin, sectionGroups, items, columns, withStatus, hiddenBlankOrders]);
 
   const maxOrder = useMemo(
     () => items.reduce((m, x) => Math.max(m, Number(x.order) || 0), 0),
@@ -377,7 +411,14 @@ export default function SheetsPage({
   // pass that, the pool always ends exactly one blank past the highest
   // used position (fill row 45 → row 46 appears empty, etc). Gaps that
   // already exist below that (empty rows 2/3 while 5 is filled) stay put.
-  const totalSlots = Math.max(maxOrder + 1, DEFAULT_BLANK_ROWS);
+  // Also stretches to cover any slot a seeded empty-folder name landed in
+  // (e.g. a section with more than 15 folders).
+  const maxBlankDraftOrder = useMemo(() => {
+    let m = 0;
+    for (const k of Object.keys(blankDrafts)) m = Math.max(m, Number(k) || 0);
+    return m;
+  }, [blankDrafts]);
+  const totalSlots = Math.max(maxOrder + 1, DEFAULT_BLANK_ROWS, maxBlankDraftOrder);
 
   const itemsByOrder = useMemo(() => {
     const m = new Map();
