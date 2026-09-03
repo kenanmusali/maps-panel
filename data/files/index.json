@@ -1442,6 +1442,17 @@
       "groupId": 31,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:35:19.421Z"
+    },
+    {
+      "id": 123,
+      "title": "Narkotik və Alkoqol siyasəti",
+      "subtitle": "İMS/SƏTƏM/03",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 31,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:35:20.901Z"
     }
   ],
   "files": []
