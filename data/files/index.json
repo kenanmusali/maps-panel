@@ -862,6 +862,17 @@
       "groupId": 29,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:33:51.930Z"
+    },
+    {
+      "id": 71,
+      "title": "Ekoloji təhlükələrin qiymətləndirilməsi proseduru",
+      "subtitle": "İMS/SƏTƏM/08",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:54.281Z"
     }
   ],
   "files": []
