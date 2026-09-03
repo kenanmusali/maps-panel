@@ -208,6 +208,17 @@
       "groupId": 1,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:32.301Z"
+    },
+    {
+      "id": 13,
+      "title": "Anbar idarəetmә prosesi",
+      "subtitle": "PS/İMS/BD/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 1,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:33.469Z"
     }
   ],
   "files": []
