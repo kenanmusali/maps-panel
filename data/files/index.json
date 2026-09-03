@@ -1132,6 +1132,17 @@
       "groupId": 21,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:21:54.713Z"
+    },
+    {
+      "id": 104,
+      "title": "Texnikalarin istismarina nəzarət proseduru",
+      "subtitle": "PR/İD/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 22,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:21:56.431Z"
     }
   ],
   "groups": [
@@ -1218,6 +1229,10 @@
     {
       "id": 21,
       "name": "Təhlükəsizlik şöbəsi"
+    },
+    {
+      "id": 22,
+      "name": "Təmir və texnikaya nəzarət şöbəsi"
     }
   ]
 }
