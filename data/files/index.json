@@ -945,6 +945,17 @@
       "groupId": 19,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T12:21:24.756Z"
+    },
+    {
+      "id": 87,
+      "title": "Yük əməliyyatlarinda texnika və işçi qüvvəsindən istifadə proseduru",
+      "subtitle": "PR/İMS/YƏ/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 19,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:21:26.417Z"
     }
   ],
   "groups": [
