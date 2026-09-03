@@ -447,6 +447,17 @@
       "groupId": 27,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:59.200Z"
+    },
+    {
+      "id": 34,
+      "title": "Marketinq kommunikasiya proseduru",
+      "subtitle": "PR/MK/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 27,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:01.434Z"
     }
   ],
   "files": []
