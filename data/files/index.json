@@ -54,6 +54,17 @@
       "groupId": 2,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:18.044Z"
+    },
+    {
+      "id": 6,
+      "title": "Beynəlxalq yükdaşımada idxal əməliyyatlarının təşkili prosesi",
+      "subtitle": "ALC-İMS-PRC-ITRN -1/1",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 3,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:19:19.480Z"
     }
   ],
   "groups": [
@@ -64,6 +75,10 @@
     {
       "id": 2,
       "name": "Anbar logistikası şöbəsi / SƏ / Konteyner əməliyyatları şöbəsi"
+    },
+    {
+      "id": 3,
+      "name": "Beynəlxalq daşımalar departamenti"
     }
   ]
 }
