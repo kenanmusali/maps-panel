@@ -234,6 +234,17 @@
       "groupId": 26,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:34.688Z"
+    },
+    {
+      "id": 15,
+      "title": "Beynəlxalq yükdaşımada idxal əməliyyatlarının təşkili prosesi",
+      "subtitle": "ALC-İMS-PRC-ITRN -1/1",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 3,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:32:36.133Z"
     }
   ],
   "files": []
