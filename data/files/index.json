@@ -660,6 +660,17 @@
       "groupId": 9,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:33:27.967Z"
+    },
+    {
+      "id": 53,
+      "title": "İclaslarin keçirilməsi proseduru",
+      "subtitle": "PR/İMS/İİ/04",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:29.228Z"
     }
   ],
   "files": []
