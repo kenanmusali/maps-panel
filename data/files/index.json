@@ -1240,6 +1240,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:49.542Z"
+    },
+    {
+      "id": 105,
+      "title": "Yüklü qatarin qəbulu prosesi",
+      "subtitle": "PS/İMS/MP/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:51.109Z"
     }
   ],
   "files": []
