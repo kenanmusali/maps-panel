@@ -3,7 +3,7 @@ import { LogoFull } from './Logo.jsx';
 import {
   LogOut, Loader2, Trash2, ChevronLeft, Download, Upload
 } from './icons.jsx';
-import { LayoutGrid, Ban } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 import { api } from '../api/client.js';
 import { pdfsApi } from '../api/pdfsClient.js';
 import { templatesApi } from '../api/templatesClient.js';
@@ -258,6 +258,10 @@ export default function SheetsPage({
   // exact text, so this is what lets admins avoid typos that would create
   // a duplicate folder instead of linking to the existing one.
   const [sectionGroups, setSectionGroups] = useState([]);
+  // itemId → folder name, from the section's own index — the fallback
+  // used when a linked row's own Struktur adı text is empty (see
+  // effectiveStrukturAdi below).
+  const [itemStrukturMap, setItemStrukturMap] = useState({});
   // № header: trash only after hovering 4s (avoids accidental reveal)
   const [nTrashReady, setNTrashReady] = useState(false);
   const nHoverTimerRef = useRef(null);
@@ -330,18 +334,29 @@ export default function SheetsPage({
   }, [kind]);
 
   // Pull the real folder list from the matching section so Struktur adı
-  // has proper options even on an otherwise-empty sheet.
+  // has proper options even on an otherwise-empty sheet, and build an
+  // itemId → folder-name map so a linked row whose own Struktur adı text
+  // is blank can still show its real folder instead of "—".
   useEffect(() => {
     let cancelled = false;
     const client = kind === 'pdfs' ? pdfsApi : kind === 'templates' ? templatesApi : null;
     const req = client ? client.list() : api.listProcesses();
     req.then(data => {
       if (cancelled) return;
-      const names = (data?.groups || [])
-        .map(g => String(g?.name || '').trim())
-        .filter(Boolean);
+      const groups = Array.isArray(data?.groups) ? data.groups : [];
+      const names = groups.map(g => String(g?.name || '').trim()).filter(Boolean);
       setSectionGroups(Array.from(new Set(names)));
-    }).catch(() => { if (!cancelled) setSectionGroups([]); });
+
+      const entries = Array.isArray(data?.processes)
+        ? data.processes
+        : Array.isArray(data?.pdfs) ? data.pdfs : [];
+      const map = {};
+      for (const entry of entries) {
+        const g = groups.find(x => Number(x?.id) === Number(entry?.groupId));
+        if (g?.name && entry?.id != null) map[Number(entry.id)] = String(g.name).trim();
+      }
+      setItemStrukturMap(map);
+    }).catch(() => { if (!cancelled) { setSectionGroups([]); setItemStrukturMap({}); } });
     return () => { cancelled = true; };
   }, [kind]);
 
@@ -397,17 +412,33 @@ export default function SheetsPage({
     [displayRows]
   );
 
+  // A linked row (itemId/processId set) whose own Struktur adı text is
+  // blank — e.g. an older row saved before the folder link was in place —
+  // falls back to the folder that item currently lives in, instead of
+  // showing an empty cell.
+  const effectiveStrukturAdi = useCallback((row) => {
+    const own = (row?.strukturAdi || '').trim();
+    if (own) return own;
+    const iid = row?.itemId ?? row?.processId;
+    if (iid == null) return '';
+    return itemStrukturMap[Number(iid)] || '';
+  }, [itemStrukturMap]);
+
   const colValueGetters = useMemo(() => {
     const labelStatus = (key) => {
       const m = STATUS_META[key];
       return m ? t(m.id, m.default) : '';
     };
     const map = {};
-    for (const c of columns) map[c.field] = (row) => row[c.field];
+    for (const c of columns) {
+      map[c.field] = c.field === 'strukturAdi'
+        ? (row) => effectiveStrukturAdi(row)
+        : (row) => row[c.field];
+    }
     map.status = (row) => (row.status ? labelStatus(row.status) : '');
     if (showDate) map.date = (row) => (row.date ? fmtDate(row.date) : '');
     return map;
-  }, [columns, showDate, STATUS_META, t]);
+  }, [columns, showDate, STATUS_META, t, effectiveStrukturAdi]);
 
   const colOptions = useMemo(() => {
     const out = {};
@@ -684,7 +715,10 @@ export default function SheetsPage({
   function handleExport() {
     const exportColumns = [
       { label: '№', get: (_row, i) => i + 1 },
-      ...columns.map(c => ({ label: tByText(c.label), get: (row) => row[c.field] || '' }))
+      ...columns.map(c => ({
+        label: tByText(c.label),
+        get: (row) => (c.field === 'strukturAdi' ? effectiveStrukturAdi(row) : row[c.field]) || ''
+      }))
     ];
     if (withStatus) exportColumns.push({ label: tByText('Status'), get: (row) => (row.status ? statusLabel(row.status) : '') });
     if (showDate) exportColumns.push({ label: tByText('Date'), get: (row) => fmtDate(row.date) });
@@ -742,34 +776,12 @@ export default function SheetsPage({
     }
   }
 
-  const linkedCount = useMemo(
-    () => items.filter(x => x.itemId != null || x.processId != null).length,
-    [items]
-  );
-
   const isBlankRow = (row) => {
     if (row.itemId != null || row.processId != null) return false; // never touch linked rows here
     if (row.status) return false;
     return !columns.some(c => (row[c.field] || '').trim());
   };
   const blankCount = useMemo(() => items.filter(isBlankRow).length, [items, columns]);
-
-  async function handleClearLinked() {
-    if (!isAdmin || linkedCount === 0) return;
-    if (!confirm(
-      `${linkedCount} avtomatik doldurulmuş (fetch olunmuş) sətir silinsin?\n` +
-      `Əl ilə əlavə etdiyiniz sətirlərə toxunulmayacaq.`
-    )) return;
-    setBusy(true);
-    try {
-      await api.clearLinkedSheets(kind);
-      await load({ silent: true });
-    } catch (e) {
-      alert('Xəta: ' + (e.message || 'Silinmədi'));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleClearBlank() {
     if (!isAdmin || blankCount === 0) return;
@@ -845,17 +857,6 @@ export default function SheetsPage({
               >
                 {importBusy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
                 <span>{tByText('Excel-dən idxal et')}</span>
-              </button>
-            )}
-            {isAdmin && linkedCount > 0 && (
-              <button
-                type="button"
-                className="pill-chip sheets-io-btn sheets-io-danger"
-                onClick={handleClearLinked}
-                disabled={busy}
-                title="Diaqram/sənəd/şablon siyahısından avtomatik dolan sətirləri sil"
-              >
-                <Ban size={14} /><span>{tByText('Fetch olunanları təmizlə')} ({linkedCount})</span>
               </button>
             )}
             {isAdmin && blankCount > 0 && (
@@ -1045,7 +1046,7 @@ export default function SheetsPage({
                               {isAdmin ? (
                                 c.field === 'strukturAdi' ? (
                                   <StrukturCell
-                                    value={row[c.field]}
+                                    value={row[c.field] || effectiveStrukturAdi(row)}
                                     options={sectionGroups}
                                     placeholder="—"
                                     onChange={(v) => setItems(prev => prev.map(x =>
@@ -1068,7 +1069,9 @@ export default function SheetsPage({
                                   />
                                 )
                               ) : (
-                                <span className="sheets-cell-text">{row[c.field] || '—'}</span>
+                                <span className="sheets-cell-text">
+                                  {(c.field === 'strukturAdi' ? effectiveStrukturAdi(row) : row[c.field]) || '—'}
+                                </span>
                               )}
                             </td>
                           ))}
