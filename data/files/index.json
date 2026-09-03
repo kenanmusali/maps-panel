@@ -274,6 +274,17 @@
       "groupId": 9,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:47.636Z"
+    },
+    {
+      "id": 26,
+      "title": "Müştəri məmnunluğunun ölçülməsi və şikayətlərin araşdirilmasi proseduru",
+      "subtitle": "PR/İMS/MK/03",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:19:49.171Z"
     }
   ],
   "groups": [
