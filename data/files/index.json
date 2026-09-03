@@ -528,6 +528,17 @@
       "groupId": 28,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:33:10.072Z"
+    },
+    {
+      "id": 41,
+      "title": "Müştəri Cəlbi Və Satiş Üzrə Mükafatlandirma Qaydasi",
+      "subtitle": "ALM-İMS",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:12.295Z"
     }
   ],
   "files": []
