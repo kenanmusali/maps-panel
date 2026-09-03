@@ -1185,6 +1185,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:39.443Z"
+    },
+    {
+      "id": 100,
+      "title": "Avtokar əməliyyatlari şöbəsinin əsasnaməsi",
+      "subtitle": "9/ALM/06",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:41.352Z"
     }
   ],
   "files": []
