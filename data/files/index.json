@@ -840,6 +840,17 @@
       "groupId": 29,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:49.137Z"
+    },
+    {
+      "id": 69,
+      "title": "Tullantilarin idarəedilməsi proseduru",
+      "subtitle": "İMS/SƏTƏM/06",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:50.471Z"
     }
   ],
   "files": []
