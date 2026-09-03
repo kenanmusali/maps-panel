@@ -469,6 +469,17 @@
       "groupId": 27,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:33:03.007Z"
+    },
+    {
+      "id": 36,
+      "title": "Xidmət sorğularin cavablandirilmasi proseduru",
+      "subtitle": "PR/İMS/MK/04",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 27,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:04.362Z"
     }
   ],
   "files": []
