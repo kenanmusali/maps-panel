@@ -895,6 +895,17 @@
       "groupId": 29,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:33:57.097Z"
+    },
+    {
+      "id": 74,
+      "title": "İlklin tibbi yardımın təşkili proseduru",
+      "subtitle": "ALM-IMS-PRD-QHSE-04",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:33:58.582Z"
     }
   ],
   "files": []
