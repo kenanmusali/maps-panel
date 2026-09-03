@@ -1163,6 +1163,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:36.011Z"
+    },
+    {
+      "id": 98,
+      "title": "Kran əməliyyatlari şöbəsinin əsasnaməsi",
+      "subtitle": "9/ALM/04",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:37.957Z"
     }
   ],
   "files": []
