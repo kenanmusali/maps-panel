@@ -252,6 +252,17 @@
       "groupId": 8,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:19:43.257Z"
+    },
+    {
+      "id": 24,
+      "title": "Marketinq araşdirma proseduru",
+      "subtitle": "Pr/MK/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:46.109Z"
     }
   ],
   "groups": [
@@ -286,6 +297,10 @@
     {
       "id": 8,
       "name": "Hüquq departamenti"
+    },
+    {
+      "id": 9,
+      "name": "İctimaiyyətlə əlaqələr və marketinq şöbəsi"
     }
   ]
 }
