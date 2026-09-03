@@ -857,6 +857,17 @@
       "groupId": 16,
       "status": "progress",
       "uploadedAt": "2026-09-03T12:21:12.972Z"
+    },
+    {
+      "id": 79,
+      "title": "Yüklü və boş vaqonların Mərkəzdən göndərilməsi proseduru",
+      "subtitle": "ALC-İMS-PRD-YOPU -2/3",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:21:14.655Z"
     }
   ],
   "groups": [
