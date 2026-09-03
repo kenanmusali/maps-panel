@@ -763,6 +763,17 @@
       "groupId": 29,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:39.886Z"
+    },
+    {
+      "id": 62,
+      "title": "Tənzimləyici tədbirlər proseduru",
+      "subtitle": "PR/İMS/ 02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:41.402Z"
     }
   ],
   "files": []
