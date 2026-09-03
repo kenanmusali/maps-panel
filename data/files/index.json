@@ -502,6 +502,17 @@
       "groupId": 8,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:07.082Z"
+    },
+    {
+      "id": 39,
+      "title": "Mərkəz daxilində İT xidmətlərinin təmini proseduru",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 8,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:33:08.654Z"
     }
   ],
   "files": []
