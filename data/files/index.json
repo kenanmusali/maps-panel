@@ -1165,6 +1165,17 @@
       "groupId": 23,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T12:21:59.849Z"
+    },
+    {
+      "id": 107,
+      "title": "Minik avtomobil dayanacağinin idarəedilməsi proseduru",
+      "subtitle": "PR/İMS/TP/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 23,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:22:01.231Z"
     }
   ],
   "groups": [
