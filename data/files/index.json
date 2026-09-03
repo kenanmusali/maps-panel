@@ -104,6 +104,10 @@
     {
       "id": 26,
       "name": "Anbar logistikası şöbəsi / SƏ / Konteyner əməliyyatları şöbəsi"
+    },
+    {
+      "id": 27,
+      "name": "İctimaiyyətlə əlaqələr və marketinq şöbəsi"
     }
   ],
   "pdfs": [
@@ -432,6 +436,17 @@
       "groupId": 7,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:32:57.856Z"
+    },
+    {
+      "id": 33,
+      "title": "Marketinq araşdirma proseduru",
+      "subtitle": "Pr/MK/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 27,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:59.200Z"
     }
   ],
   "files": []
