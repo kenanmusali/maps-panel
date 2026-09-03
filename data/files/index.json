@@ -300,6 +300,17 @@
       "groupId": 3,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:32:41.929Z"
+    },
+    {
+      "id": 21,
+      "title": "Biznes Departamentinin Əsasnaməsi",
+      "subtitle": "Ə/ALM/17",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 2,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:43.065Z"
     }
   ],
   "files": []
