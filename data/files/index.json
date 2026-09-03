@@ -950,6 +950,17 @@
       "groupId": 11,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:04.767Z"
+    },
+    {
+      "id": 79,
+      "title": "Korrupsiyaya qarşı mübarizə siyasəti",
+      "subtitle": "ALC-IMS-POL-AC-1/1",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 11,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:34:06.182Z"
     }
   ],
   "files": []
