@@ -873,6 +873,17 @@
       "groupId": 29,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:54.281Z"
+    },
+    {
+      "id": 72,
+      "title": "Mülki Müdafiə Planı və Fövqəladə Hallara Hazırlıq Proseduru",
+      "subtitle": "ALM-IMS-PL/PRD-QHSE-07",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:33:55.629Z"
     }
   ],
   "files": []
