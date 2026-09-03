@@ -961,6 +961,17 @@
       "groupId": 11,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:34:06.182Z"
+    },
+    {
+      "id": 80,
+      "title": "Büdcə Hazirlanmasi Plani",
+      "subtitle": "ALC-İMS-Pİ-FİNC-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 13,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:34:08.440Z"
     }
   ],
   "files": []
