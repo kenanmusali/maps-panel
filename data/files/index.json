@@ -682,6 +682,17 @@
       "groupId": 9,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:33:30.635Z"
+    },
+    {
+      "id": 55,
+      "title": "İşə qəbul və adaptasiya proseduru",
+      "subtitle": "ALM-IMS-PRD-IRID-01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:33:31.893Z"
     }
   ],
   "files": []
