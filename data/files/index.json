@@ -311,6 +311,17 @@
       "groupId": 2,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:43.065Z"
+    },
+    {
+      "id": 22,
+      "title": "Xidmətlərin satişi proseduru",
+      "subtitle": "PR/İMS/BD/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 2,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:32:44.347Z"
     }
   ],
   "files": []
