@@ -1286,6 +1286,17 @@
       "groupId": 24,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:22:16.521Z"
+    },
+    {
+      "id": 118,
+      "title": "Texniki təhlükəsizlik bəyannaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 24,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T12:22:18.340Z"
     }
   ],
   "groups": [
