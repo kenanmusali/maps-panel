@@ -1207,6 +1207,17 @@
       "groupId": 16,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:34:43.304Z"
+    },
+    {
+      "id": 102,
+      "title": "Vaqon yüklərinin yük sahibinə verilməsi prosesi",
+      "subtitle": "PS/YƏ /01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:45.857Z"
     }
   ],
   "files": []
