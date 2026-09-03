@@ -461,6 +461,17 @@
       "groupId": 12,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:16.266Z"
+    },
+    {
+      "id": 43,
+      "title": "Adaptasiya proseduru",
+      "subtitle": "PR/İMS/İR/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:20:18.132Z"
     }
   ],
   "groups": [
