@@ -884,6 +884,17 @@
       "groupId": 29,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:33:55.629Z"
+    },
+    {
+      "id": 73,
+      "title": "Qəzaların ləğvi planı",
+      "subtitle": "ALM-IMS-PL-QHSE-10",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 29,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:33:57.097Z"
     }
   ],
   "files": []
