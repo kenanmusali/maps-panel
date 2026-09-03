@@ -1082,6 +1082,17 @@
       "groupId": 14,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:24.819Z"
+    },
+    {
+      "id": 91,
+      "title": "Boş qatarin mərkəzdən göndərilməsi prosesi",
+      "subtitle": "PS/İMS / MP/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 14,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:26.269Z"
     }
   ],
   "files": []
