@@ -1508,6 +1508,17 @@
       "groupId": 31,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:35:29.937Z"
+    },
+    {
+      "id": 129,
+      "title": "Mərkəzdə dəmir yolu ilə daxil olan yüklər üzrə sənədləşmə proseduru",
+      "subtitle": "ALC-İMS-PRD-SWIN -1/1",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 22,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:35:31.487Z"
     }
   ],
   "files": []
