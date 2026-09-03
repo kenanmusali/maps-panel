@@ -1273,6 +1273,17 @@
       "groupId": 17,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:34:54.089Z"
+    },
+    {
+      "id": 108,
+      "title": "Satinalma proseduru",
+      "subtitle": "İMS/PR/TŞ/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 17,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:56.349Z"
     }
   ],
   "files": []
