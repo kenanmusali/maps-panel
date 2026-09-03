@@ -1319,6 +1319,17 @@
       "groupId": 25,
       "status": "progress",
       "uploadedAt": "2026-09-03T12:22:21.371Z"
+    },
+    {
+      "id": 121,
+      "title": "Vahid Pəncərə Əməliyyat İşçi Təlimatı",
+      "subtitle": "İT/VP/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 25,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:22:22.987Z"
     }
   ],
   "groups": [
