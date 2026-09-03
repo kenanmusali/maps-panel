@@ -1110,6 +1110,17 @@
       "groupId": 20,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:21:51.316Z"
+    },
+    {
+      "id": 102,
+      "title": "ALM Inzibati binasına və yük həyətinə buraxılış rejimi haqqında təlimat",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 21,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:21:53.194Z"
     }
   ],
   "groups": [
@@ -1192,6 +1203,10 @@
     {
       "id": 20,
       "name": "Təchizat şöbəsi"
+    },
+    {
+      "id": 21,
+      "name": "Təhlükəsizlik şöbəsi"
     }
   ]
 }
