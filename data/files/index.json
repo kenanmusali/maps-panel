@@ -399,6 +399,17 @@
       "groupId": 6,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:32:53.878Z"
+    },
+    {
+      "id": 30,
+      "title": "Anbar proseslərinin proqram təminatı və sayım prosesinin təşkili proseduru",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 6,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:32:55.469Z"
     }
   ],
   "files": []
