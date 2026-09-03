@@ -10,6 +10,17 @@
       "groupId": 1,
       "status": "progress",
       "uploadedAt": "2026-09-03T12:19:12.535Z"
+    },
+    {
+      "id": 2,
+      "title": "Anbar xidməti işçi təlimatlar",
+      "subtitle": "İT/BD/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 1,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T12:19:13.858Z"
     }
   ],
   "groups": [
