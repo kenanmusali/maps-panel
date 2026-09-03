@@ -1064,10 +1064,20 @@ details[open] summary::before { transform: rotate(90deg); }
 /* ============================================================
    PDF list + modal
    ============================================================ */
-.pdf-item { cursor: default; }
+.pdf-item {
+  cursor: default;
+  /* This row can carry a lot: number, title, status pill, "no file" badge,
+     view/download, edit/archive/delete — more than fits on one line once
+     everything is present. Wrapping keeps it inside the card instead of
+     spilling out past the rounded border (status/badge/actions flow onto
+     their own line under the title when space runs out). */
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
 .pdf-item:hover { transform: none; }
+.pdf-item .label { flex: 1 1 200px; min-width: 0; }
 .pdf-size { display: inline-block; margin-left: 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); font-family: ui-monospace, monospace; }
-.pdf-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.pdf-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; flex-wrap: wrap; }
 .action-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 8px; border-radius: var(--r-xs);
   font-size: 12.5px; font-weight: 600; background: var(--surface-soft); border: 1px solid var(--border); color: var(--text-secondary);
@@ -1278,6 +1288,7 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 .order-grip:active { cursor: grabbing; }
 .group-head[draggable="true"] { cursor: grab; }
 .group-head[draggable="true"]:active { cursor: grabbing; }
+.diagram-row { flex-wrap: wrap; row-gap: 10px; }
 .diagram-row .num, .pdf-item .num { min-width: 44px; }
 
 /* drop-target highlight */
@@ -2706,6 +2717,11 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
   width: 150px;
   min-width: 130px;
 }
+/* Səhifə sayı — just a short number, doesn't need a full col-extra width. */
+.sheets-table .col-narrow {
+  width: 90px;
+  min-width: 80px;
+}
 .sheets-table-wrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -3001,6 +3017,7 @@ border-radius: var(--r-lg) var(--r-lg) 25px 25px;
 }
 .sheets-table .col-n { left: 0; }
 .sheets-table .col-title {
+  left: 52px; /* right after the (fixed-width) № column */
   box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.12);
 }
 .sheets-col-n-clear {
@@ -3396,6 +3413,20 @@ textarea.sheets-cell-input:disabled { opacity: 0.6; cursor: default; }
   border-radius: var(--r-pill);
   padding: 2px 8px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Admin variant: an actual clickable button (opens the edit modal straight
+   to the file picker) instead of just an inert "no file" label. */
+button.pdf-nofile-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+button.pdf-nofile-upload:hover {
+  background: rgba(217,119,6,0.2);
+  border-color: rgba(217,119,6,0.4);
 }
 .nm-sheet-empty {
   padding: 12px;

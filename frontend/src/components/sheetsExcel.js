@@ -67,10 +67,23 @@ function colLetter(n) {
   return s;
 }
 
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function cellStr(v) {
   if (v == null) return '';
   let s;
-  if (typeof v === 'number' && Number.isFinite(v)) {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    // A real date cell (cellDates:true above turns Excel date serials into
+    // JS Date objects) — format it plainly instead of letting the caller
+    // fall through to String(v), which is Date.prototype.toString() and
+    // dumps things like "Wed Nov 12 2025 23:59:36 GMT+0400 (Azerbaijan
+    // Standard Time)" straight into the cell.
+    const hh = v.getHours().toString().padStart(2, '0');
+    const mi = v.getMinutes().toString().padStart(2, '0');
+    s = (hh === '00' && mi === '00')
+      ? `${MONTH_SHORT[v.getMonth()]} ${v.getDate()} ${v.getFullYear()}`
+      : `${MONTH_SHORT[v.getMonth()]} ${v.getDate()} ${v.getFullYear()}, ${hh}:${mi}`;
+  } else if (typeof v === 'number' && Number.isFinite(v)) {
     // Excel date serials (e.g. 46260) — leave as plain number string; caller
     // decides whether to treat as date. Titles/codes stay numeric-as-text.
     s = String(v);

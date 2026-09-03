@@ -9,6 +9,7 @@ import {
   clearLinkedRows,
   clearAllRows,
   syncFromItem,
+  backfillMissingFromIndex,
   ALLOWED_STATUS,
   ALLOWED_STATUS_BY_KIND,
   EXTRA_FIELDS
@@ -35,12 +36,13 @@ router.get('/:kind', async (req, res, next) => {
   // Avoid treating legacy paths as kinds — only known kinds
   if (!SHEET_KINDS[req.params.kind]) return next();
   try {
-    // NOTE: Sheets is a manual, standalone checklist — it must never
-    // auto-fetch/backfill rows from the diagrams/pdfs/templates index.
-    // Rows only appear here when an admin adds them by hand (blank "+"
-    // row) or when a section explicitly syncs a single item via
-    // POST /:kind/sync. Do not reintroduce backfillFromIndex() here.
-    const sheets = await readSheets(req.params.kind);
+    // Any real item (diagram/pdf/template) that doesn't have a sheet row
+    // yet gets one added automatically here — e.g. a folder with 5 real
+    // workflows shouldn't sit there invisible just because nobody has
+    // manually retyped them into the sheet. Once every item has a row this
+    // is a no-op (no write) on every subsequent load. Hand-typed rows and
+    // ones an admin has already deleted are never touched or recreated.
+    const sheets = await backfillMissingFromIndex(req.params.kind, req.user);
     res.json({ kind: req.params.kind, items: sheets.items || [] });
   } catch (e) { next(e); }
 });
@@ -115,7 +117,7 @@ router.delete('/:kind/:id', requireAdmin, async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const sheets = await readSheets('diagrams');
+    const sheets = await backfillMissingFromIndex('diagrams', req.user);
     res.json({ kind: 'diagrams', items: sheets.items || [] });
   } catch (e) { next(e); }
 });

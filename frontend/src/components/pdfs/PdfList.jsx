@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, ChevronDown, ChevronsDownUp, ChevronsUpDown,
   LogOut, Plus, Loader2, Trash2,
   Eye, Edit3, Search, Folder, FolderOpen, FolderPlus, Pencil, GripVertical,
-  Save, Check, Undo2
+  Save, Check, Undo2, Upload
 } from '../icons.jsx';
 import { Archive, ArchiveRestore, FileSpreadsheet } from 'lucide-react';
 import { api, setToken } from '../../api/client.js';
@@ -674,9 +674,21 @@ export default function PdfList({
                   )}
 
                   {(p.noFile || !p.filename) && (
-                    <span className="pdf-nofile-badge" title="Sheets-dən avtomatik yaradılıb — fayl hələ yüklənməyib">
-                      {tByText('Fayl yüklənməyib')}
-                    </span>
+                    isAdmin ? (
+                      <button
+                        type="button"
+                        className="pdf-nofile-badge pdf-nofile-upload"
+                        title="Fayl yükləmək üçün klikləyin"
+                        onClick={(e) => { e.stopPropagation(); setModal({ mode: 'edit', pdf: p }); }}
+                      >
+                        <Upload size={12} />
+                        <span>{tByText('Fayl yüklənməyib')}</span>
+                      </button>
+                    ) : (
+                      <span className="pdf-nofile-badge" title="Sheets-dən avtomatik yaradılıb — fayl hələ yüklənməyib">
+                        {tByText('Fayl yüklənməyib')}
+                      </span>
+                    )
                   )}
 
                   <div className="pdf-actions">

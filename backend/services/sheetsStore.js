@@ -121,17 +121,23 @@ export async function readSheets(kind) {
   const file = await mongoGet(sheetsPath(kind));
   const c = file ? file.content : null;
   let items = (c && Array.isArray(c.items)) ? c.items.map(normalizeRow) : [];
+  // itemIds an admin explicitly deleted the (auto-synced) sheet row for —
+  // backfillMissingFromIndex() must never recreate these, or "delete" would
+  // just silently undo itself on the next page load.
+  const deletedItemIds = (c && Array.isArray(c.deletedItemIds))
+    ? c.deletedItemIds.map(Number).filter(Number.isFinite)
+    : [];
 
   // Migration: rows created before the `order` field existed don't have a
   // stable position — backfill using their stored (creation) order once,
   // so old rows keep their spot instead of colliding with new order numbers.
   if (items.some(x => x.order == null)) {
     items = items.map((x, i) => (x.order == null ? { ...x, order: i + 1 } : x));
-    await writeSheets(kind, { items }, `Backfill order for ${kind} sheets`, null);
+    await writeSheets(kind, { items, deletedItemIds }, `Backfill order for ${kind} sheets`, null);
   }
 
   items.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
-  return { items };
+  return { items, deletedItemIds };
 }
 
 export async function writeSheets(kind, content, message, user) {
@@ -204,6 +210,64 @@ export async function backfillFromIndex(kind, user) {
   if (changed) {
     await writeSheets(kind, sheets, `Fill strukturAdi on ${kind} sheets`, user);
   }
+  return sheets;
+}
+
+/**
+ * Fill in any item from the section index (diagrams/pdfs/templates) that
+ * doesn't have a linked sheet row yet — e.g. the 5 real workflows inside a
+ * folder that only had a couple of hand-typed sheet rows. Unlike
+ * backfillFromIndex() above (one-time seed of a *completely empty* sheet),
+ * this tops up an existing sheet incrementally and is safe to call on every
+ * GET: it's a no-op (no write) once every item already has a row.
+ */
+export async function backfillMissingFromIndex(kind, user) {
+  const meta = assertKind(kind);
+  const sheets = await readSheets(kind);
+
+  const idxFile = await readIndexFile(kind);
+  const content = idxFile?.content || {};
+  const list = Array.isArray(content[meta.indexKey]) ? content[meta.indexKey] : [];
+  const groups = Array.isArray(content.groups) ? content.groups : [];
+  if (!list.length) return sheets;
+
+  const linkedIds = new Set(
+    sheets.items
+      .map(x => (x.itemId != null ? x.itemId : x.processId))
+      .filter(v => v != null)
+      .map(Number)
+  );
+  const deletedIds = new Set(sheets.deletedItemIds || []);
+  const missing = list.filter(p => !linkedIds.has(Number(p.id)) && !deletedIds.has(Number(p.id)));
+  if (!missing.length) return sheets;
+
+  function strukturFor(entry) {
+    const g = groups.find(x => Number(x.id) === Number(entry?.groupId));
+    return g?.name ? String(g.name) : '';
+  }
+
+  let order = sheets.items.reduce((m, x) => Math.max(m, Number(x.order) || 0), 0);
+  let id = nextId(sheets.items);
+  const now = new Date().toISOString();
+  const added = missing.map((p) => {
+    order += 1;
+    const row = {
+      id: id++,
+      order,
+      title: String(p.title || ''),
+      subtitle: String(p.subtitle || ''),
+      strukturAdi: strukturFor(p),
+      status: normalizeStatus(kind, p.status),
+      date: now,
+      itemId: Number(p.id),
+      processId: Number(p.id)
+    };
+    if (row.status == null) delete row.status;
+    return row;
+  });
+
+  sheets.items = [...sheets.items, ...added];
+  await writeSheets(kind, sheets, `Backfill ${added.length} missing ${kind} sheet row(s) from index`, user);
   return sheets;
 }
 
@@ -489,11 +553,18 @@ export async function deleteSheetRow(kind, id, user) {
   assertKind(kind);
   const sheets = await readSheets(kind);
   const before = sheets.items.length;
+  const row = sheets.items.find(x => Number(x.id) === Number(id));
+  const linkedItemId = row ? (row.itemId != null ? row.itemId : row.processId) : null;
   sheets.items = sheets.items.filter(x => Number(x.id) !== Number(id));
   if (sheets.items.length === before) {
     const err = new Error('Sheet row not found');
     err.status = 404;
     throw err;
+  }
+  // Remember this so the next auto-backfill doesn't silently bring the row
+  // right back — an explicit delete needs to stay deleted.
+  if (linkedItemId != null && !sheets.deletedItemIds.includes(Number(linkedItemId))) {
+    sheets.deletedItemIds = [...sheets.deletedItemIds, Number(linkedItemId)];
   }
   await writeSheets(kind, sheets, `Delete ${kind} sheet row ${id}`, user);
   return { ok: true };

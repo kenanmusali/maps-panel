@@ -56,7 +56,7 @@ const KIND_COLUMNS = {
     { field: 'approvalDate', label: 'Təsdiq tarixi', cls: 'col-extra', ph: () => 'gg.aa.iiii', aliases: ['təsdiqtarixi', 'tesdiqtarixi', 'approvaldate'] },
     { field: 'subtitle', label: 'Sənədin nömrəsi', cls: 'col-sub', ph: () => 'Sənədin nömrəsi…', aliases: ['sənədinnömrəsi', 'senedinnomresi', 'nömrə', 'nomre', 'subtitle', 'code'] },
     { field: 'protocol', label: 'Qərar / Protokol', cls: 'col-extra', ph: () => 'Qərar / Protokol…', aliases: ['qərarprotokol', 'qerarprotokol', 'protocol'] },
-    { field: 'pageCount', label: 'Səhifə sayı', cls: 'col-extra', ph: () => 'Səhifə sayı…', aliases: ['səhifəsayı', 'sehifesayi', 'pagecount'] }
+    { field: 'pageCount', label: 'Səhifə sayı', cls: 'col-narrow', ph: () => 'Səhifə sayı…', aliases: ['səhifəsayı', 'sehifesayi', 'pagecount'] }
   ],
   templates: [
     { field: 'title', label: 'Formanın adı', cls: 'col-title', ph: () => 'Formanın adı…', aliases: ['ad', 'title', 'formanınadı', 'formaninadi', 'şablonadı', 'sablonadi', 'name'] },
@@ -84,6 +84,23 @@ function fmtDate(iso) {
   const dd = d.getDate().toString().padStart(2, '0');
   const mm = (d.getMonth() + 1).toString().padStart(2, '0');
   return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// A free-text date field (Təsdiq tarixi) can end up holding a literal
+// `Date.prototype.toString()` dump — e.g. an Excel import reading a real
+// date cell (see sheetsExcel.js cellStr) — instead of a plain date. Shown
+// as-is that's "Wed Nov 12 2025 23:59:36 GMT+0400 (Azerbaijan Standard
+// Time)"; reformat that specific shape into "Nov 12 2025, 23:59" wherever
+// it's displayed, without otherwise touching normal hand-typed text.
+function fmtFreeDate(v) {
+  if (!v || typeof v !== 'string') return v;
+  if (!/^[A-Za-z]{3} [A-Za-z]{3} \d{1,2} \d{4} \d{2}:\d{2}:\d{2} GMT/.test(v)) return v;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mi = d.getMinutes().toString().padStart(2, '0');
+  return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}, ${hh}:${mi}`;
 }
 
 function fmtTime(d) {
@@ -269,6 +286,14 @@ export default function SheetsPage({
   // empty folder gets shown exactly once (not re-added on every re-render/
   // re-fetch) — see the "seed empty folders" effect below.
   const seededGroupsRef = useRef(new Set());
+  // order → the folder name we auto-filled into that slot, for as long as
+  // it stays untouched (see blankHasContent / updateBlank above).
+  const autoSeededRef = useRef({});
+  // Folder names the admin explicitly deleted an empty-folder placeholder
+  // row for — kept in localStorage (per sheet kind) so a deleted placeholder
+  // stays gone after a page reload instead of silently coming back.
+  const dismissedFolderKey = `sheets-dismissed-empty-folders:${kind}`;
+  const dismissedFoldersRef = useRef(new Set());
 
   const DEFAULT_BLANK_ROWS = 15;
 
@@ -370,6 +395,13 @@ export default function SheetsPage({
     setOpenColFilter(null);
     setNTrashReady(false);
     seededGroupsRef.current = new Set();
+    autoSeededRef.current = {};
+    try {
+      const raw = localStorage.getItem(dismissedFolderKey);
+      dismissedFoldersRef.current = new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      dismissedFoldersRef.current = new Set();
+    }
   }, [kind]);
 
   // Every folder from the matching section should be visible on the sheet,
@@ -382,7 +414,9 @@ export default function SheetsPage({
     if (!isAdmin || !sectionGroups.length) return;
     const covered = new Set(items.map(x => (x.strukturAdi || '').trim()).filter(Boolean));
     const missing = sectionGroups.filter(
-      (name) => !covered.has(name) && !seededGroupsRef.current.has(name)
+      (name) => !covered.has(name)
+        && !seededGroupsRef.current.has(name)
+        && !dismissedFoldersRef.current.has(name)
     );
     if (!missing.length) return;
 
@@ -394,6 +428,7 @@ export default function SheetsPage({
       for (const name of missing) {
         while (used.has(order) || hiddenBlankOrders.has(order) || hasContent(next[order])) order += 1;
         next[order] = { ...emptyDraft(), strukturAdi: name };
+        autoSeededRef.current[order] = name;
         used.add(order);
         seededGroupsRef.current.add(name);
       }
@@ -472,7 +507,9 @@ export default function SheetsPage({
     for (const c of columns) {
       map[c.field] = c.field === 'strukturAdi'
         ? (row) => effectiveStrukturAdi(row)
-        : (row) => row[c.field];
+        : c.field === 'approvalDate'
+          ? (row) => fmtFreeDate(row[c.field])
+          : (row) => row[c.field];
     }
     map.status = (row) => (row.status ? labelStatus(row.status) : '');
     if (showDate) map.date = (row) => (row.date ? fmtDate(row.date) : '');
@@ -575,12 +612,30 @@ export default function SheetsPage({
     );
   }
 
-  function blankHasContent(b) {
+  function blankHasContent(b, order) {
     if (withStatus && b.status) return true;
-    return columns.some(c => (b[c.field] || '').trim());
+    return columns.some(c => {
+      const v = (b[c.field] || '').trim();
+      if (!v) return false;
+      // A folder name we pre-filled ourselves (see the "seed empty
+      // folders" effect) doesn't count as real content on its own — it's
+      // just there so the folder is visible, not something the admin
+      // typed. Otherwise every empty folder would silently turn into a
+      // real (title-less) sheet row the moment focus passed through it.
+      if (c.field === 'strukturAdi' && order != null && autoSeededRef.current[order] === v) {
+        return false;
+      }
+      return true;
+    });
   }
 
   function updateBlank(order, field, value) {
+    // Once the admin actually edits this row (any field, or a struktur
+    // value that no longer matches what we auto-filled), it's no longer
+    // just a placeholder — treat it as real content from here on.
+    if (field !== 'strukturAdi' || autoSeededRef.current[order] !== value) {
+      delete autoSeededRef.current[order];
+    }
     setBlankDrafts(prev => ({
       ...prev,
       [order]: { ...(prev[order] || emptyDraft()), [field]: value }
@@ -590,7 +645,7 @@ export default function SheetsPage({
   function commitBlankRow(order, draftOverride) {
     if (!isAdmin || committingRef.current.has(order)) return;
     const blank = draftOverride || blankDrafts[order] || emptyDraft();
-    if (!blankHasContent(blank)) return;
+    if (!blankHasContent(blank, order)) return;
     committingRef.current.add(order);
     (async () => {
       try {
@@ -607,6 +662,7 @@ export default function SheetsPage({
           delete cp[order];
           return cp;
         });
+        delete autoSeededRef.current[order];
       } catch (e) {
         alert('Xəta: ' + (e.message || 'Əlavə edilmədi'));
       } finally {
@@ -627,7 +683,18 @@ export default function SheetsPage({
   // row visible on the sheet so there's somewhere left to type.
   function removeBlankSlot(order) {
     if (!isAdmin || visibleBlankCount <= 1) return;
+    // If this slot was one of the auto-filled "empty folder" placeholders,
+    // remember that folder was dismissed (persisted) so it doesn't reappear
+    // on the next load, not just for the rest of this session.
+    const seededName = autoSeededRef.current[order];
+    if (seededName) {
+      dismissedFoldersRef.current.add(seededName);
+      try {
+        localStorage.setItem(dismissedFolderKey, JSON.stringify([...dismissedFoldersRef.current]));
+      } catch { /* localStorage unavailable — dismissal just won't survive a reload */ }
+    }
     setHiddenBlankOrders(prev => new Set(prev).add(order));
+    delete autoSeededRef.current[order];
     setBlankDrafts(prev => {
       if (!(order in prev)) return prev;
       const cp = { ...prev };
@@ -756,7 +823,11 @@ export default function SheetsPage({
       { label: '№', get: (_row, i) => i + 1 },
       ...columns.map(c => ({
         label: tByText(c.label),
-        get: (row) => (c.field === 'strukturAdi' ? effectiveStrukturAdi(row) : row[c.field]) || ''
+        get: (row) => (
+          c.field === 'strukturAdi' ? effectiveStrukturAdi(row)
+          : c.field === 'approvalDate' ? fmtFreeDate(row[c.field])
+          : row[c.field]
+        ) || ''
       }))
     ];
     if (withStatus) exportColumns.push({ label: tByText('Status'), get: (row) => (row.status ? statusLabel(row.status) : '') });
@@ -818,7 +889,12 @@ export default function SheetsPage({
   const isBlankRow = (row) => {
     if (row.itemId != null || row.processId != null) return false; // never touch linked rows here
     if (row.status) return false;
-    return !columns.some(c => (row[c.field] || '').trim());
+    if ((row.title || '').trim()) return false;
+    // A row with nothing but a Struktur adı (folder name) and no title is
+    // effectively still empty — this is what the phantom rows the earlier
+    // "seed empty folders" bug created look like, so it's safe to sweep
+    // them up here too.
+    return !columns.some(c => c.field !== 'strukturAdi' && (row[c.field] || '').trim());
   };
   const blankCount = useMemo(() => items.filter(isBlankRow).length, [items, columns]);
 
@@ -1097,7 +1173,7 @@ export default function SheetsPage({
                                   />
                                 ) : (
                                   <GridCell
-                                    value={row[c.field]}
+                                    value={c.field === 'approvalDate' ? fmtFreeDate(row[c.field]) : row[c.field]}
                                     placeholder="—"
                                     onChange={(v) => setItems(prev => prev.map(x =>
                                       Number(x.id) === Number(row.id) ? { ...x, [c.field]: v } : x
@@ -1109,7 +1185,9 @@ export default function SheetsPage({
                                 )
                               ) : (
                                 <span className="sheets-cell-text">
-                                  {(c.field === 'strukturAdi' ? effectiveStrukturAdi(row) : row[c.field]) || '—'}
+                                  {(c.field === 'strukturAdi' ? effectiveStrukturAdi(row)
+                                    : c.field === 'approvalDate' ? fmtFreeDate(row[c.field])
+                                    : row[c.field]) || '—'}
                                 </span>
                               )}
                             </td>
