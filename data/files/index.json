@@ -627,6 +627,17 @@
       "groupId": 9,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:33:23.971Z"
+    },
+    {
+      "id": 50,
+      "title": "Sənədləşdirilmiş İnformasiyanin İdarəedilməsi Proseduru",
+      "subtitle": "PR/İMS/İİ/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:25.418Z"
     }
   ],
   "files": []
