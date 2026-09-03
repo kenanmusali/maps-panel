@@ -1409,6 +1409,17 @@
       "groupId": 31,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:35:14.586Z"
+    },
+    {
+      "id": 120,
+      "title": "Süni intellekt platformasından istifadə təlimatı",
+      "subtitle": "ALC-İMS-İ-PMOD -2/1",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 31,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:35:16.143Z"
     }
   ],
   "files": []
