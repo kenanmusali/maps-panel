@@ -351,6 +351,17 @@
       "groupId": 12,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:59.054Z"
+    },
+    {
+      "id": 33,
+      "title": "Davamiyyətə Nəzarət Və İcazə Proseduru",
+      "subtitle": "ALM-İMS-İRİD-004",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:20:00.803Z"
     }
   ],
   "groups": [
