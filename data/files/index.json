@@ -939,6 +939,17 @@
       "groupId": 11,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:03.029Z"
+    },
+    {
+      "id": 78,
+      "title": "Məlumatların açıqlanması proseduru",
+      "subtitle": "ALM-İMS-LİOO-002",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 11,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:34:04.767Z"
     }
   ],
   "files": []
