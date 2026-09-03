@@ -186,6 +186,17 @@
       "groupId": 5,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:19:34.935Z"
+    },
+    {
+      "id": 18,
+      "title": "Daxili Daşimalar Departamentinin Əsasnaməsi",
+      "subtitle": "ALM-İMS-DDD-001",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 6,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:19:36.114Z"
     }
   ],
   "groups": [
@@ -208,6 +219,10 @@
     {
       "id": 5,
       "name": "Daxili audit departamenti"
+    },
+    {
+      "id": 6,
+      "name": "Daxili daşımalar departamenti"
     }
   ]
 }
