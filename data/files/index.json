@@ -395,6 +395,17 @@
       "groupId": 12,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T12:20:06.051Z"
+    },
+    {
+      "id": 37,
+      "title": "Korporativ Davraniş Və Biznes Etika Məcəlləsi",
+      "subtitle": "ALM-IMS-İRİD-003",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 12,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:20:08.039Z"
     }
   ],
   "groups": [
