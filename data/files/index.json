@@ -572,6 +572,17 @@
       "groupId": 9,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:33:16.491Z"
+    },
+    {
+      "id": 45,
+      "title": "Təlim Proseduru",
+      "subtitle": "PR/İMS/İR/03",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:33:17.840Z"
     }
   ],
   "files": []
