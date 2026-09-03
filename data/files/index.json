@@ -1,4 +1,21 @@
 {
-  "pdfs": [],
-  "groups": []
+  "pdfs": [
+    {
+      "id": 1,
+      "title": "Anbar logistikası şöbəsi əsasnaməsi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 1,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:19:12.535Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "name": "Anbar logistikası şöbəsi"
+    }
+  ]
 }
