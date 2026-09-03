@@ -1475,6 +1475,17 @@
       "groupId": 31,
       "status": "progress",
       "uploadedAt": "2026-09-03T07:35:24.930Z"
+    },
+    {
+      "id": 126,
+      "title": "Texniki təhlükəsizlik bəyannaməsinin hesabat-izahat vərəqi",
+      "subtitle": "",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 31,
+      "status": "notdone",
+      "uploadedAt": "2026-09-03T07:35:26.478Z"
     }
   ],
   "files": []
