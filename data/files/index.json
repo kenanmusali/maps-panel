@@ -605,6 +605,17 @@
       "groupId": 9,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:33:21.477Z"
+    },
+    {
+      "id": 48,
+      "title": "Satiş Üzrə Mükafatlandirma Qaydasi",
+      "subtitle": "ALM-İMS-İRİD",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 9,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:33:22.750Z"
     }
   ],
   "files": []
