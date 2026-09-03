@@ -5,6 +5,8 @@ import {
 } from './icons.jsx';
 import { LayoutGrid, Ban } from 'lucide-react';
 import { api } from '../api/client.js';
+import { pdfsApi } from '../api/pdfsClient.js';
+import { templatesApi } from '../api/templatesClient.js';
 import {
   StatusControl, PROCESS_STATUS_META, PROCESS_STATUS_ORDER, DOC_STATUS_META, DOC_STATUS_ORDER
 } from './Status.jsx';
@@ -142,6 +144,60 @@ function GridCell({ value, placeholder, disabled, onChange, onCommit, cellRef, c
   );
 }
 
+// Struktur adı cell — a GridCell plus a lightweight suggestions dropdown
+// of the real folder/group names from the matching section, so admins can
+// pick the exact existing folder instead of retyping it (sync matches by
+// exact text, so a typo here would create a duplicate folder).
+function StrukturCell({ value, options, placeholder, disabled, onChange, onCommit, commitOnBlur }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    const q = (value || '').trim().toLowerCase();
+    const list = q ? options.filter(o => o.toLowerCase().includes(q)) : options;
+    return list.slice(0, 8);
+  }, [value, options]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  return (
+    <div className="struktur-cell" ref={wrapRef}>
+      <GridCell
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(v) => { onChange(v); if (options.length) setOpen(true); }}
+        onCommit={onCommit}
+        commitOnBlur={commitOnBlur}
+      />
+      {open && filtered.length > 0 && (
+        <div className="struktur-suggest">
+          {filtered.map(name => (
+            <button
+              type="button"
+              key={name}
+              className="struktur-suggest-opt"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(name);
+                onCommit?.(name);
+                setOpen(false);
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const KIND_META = {
   diagrams: {
     title: 'İş axışların hesabatı',
@@ -196,6 +252,12 @@ export default function SheetsPage({
   const [colFilters, setColFilters] = useState({});
   const [openColFilter, setOpenColFilter] = useState(null); // column key or null
   const [importBusy, setImportBusy] = useState(false);
+  // Folder/group names from the matching section (İş Axışları / Normativ
+  // Sənədlər / Şablonlar) — so Struktur adı can be picked from the real
+  // folder list even before any document exists in it. Sync matches by
+  // exact text, so this is what lets admins avoid typos that would create
+  // a duplicate folder instead of linking to the existing one.
+  const [sectionGroups, setSectionGroups] = useState([]);
   // № header: trash only after hovering 4s (avoids accidental reveal)
   const [nTrashReady, setNTrashReady] = useState(false);
   const nHoverTimerRef = useRef(null);
@@ -267,6 +329,22 @@ export default function SheetsPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind]);
 
+  // Pull the real folder list from the matching section so Struktur adı
+  // has proper options even on an otherwise-empty sheet.
+  useEffect(() => {
+    let cancelled = false;
+    const client = kind === 'pdfs' ? pdfsApi : kind === 'templates' ? templatesApi : null;
+    const req = client ? client.list() : api.listProcesses();
+    req.then(data => {
+      if (cancelled) return;
+      const names = (data?.groups || [])
+        .map(g => String(g?.name || '').trim())
+        .filter(Boolean);
+      setSectionGroups(Array.from(new Set(names)));
+    }).catch(() => { if (!cancelled) setSectionGroups([]); });
+    return () => { cancelled = true; };
+  }, [kind]);
+
   // Reset per-sheet blank-row bookkeeping whenever the sheet kind changes.
   useEffect(() => {
     setBlankDrafts({});
@@ -336,8 +414,15 @@ export default function SheetsPage({
     for (const [key, get] of Object.entries(colValueGetters)) {
       out[key] = uniqueColumnValues(items, get);
     }
+    if (out.strukturAdi) {
+      const merged = new Set(out.strukturAdi.filter(v => v !== BLANK_FILTER_VALUE));
+      for (const name of sectionGroups) merged.add(name);
+      const list = Array.from(merged).sort((a, b) => a.localeCompare(b, 'az', { sensitivity: 'base' }));
+      if (out.strukturAdi.includes(BLANK_FILTER_VALUE)) list.push(BLANK_FILTER_VALUE);
+      out.strukturAdi = list;
+    }
     return out;
-  }, [items, colValueGetters]);
+  }, [items, colValueGetters, sectionGroups]);
 
   function cellFilterValue(row, key) {
     const get = colValueGetters[key];
@@ -904,13 +989,24 @@ export default function SheetsPage({
                           <td className="col-n">{order}</td>
                           {columns.map(c => (
                             <td className={c.cls} key={c.field}>
-                              <GridCell
-                                value={row[c.field]}
-                                placeholder=""
-                                onChange={(v) => updateBlank(order, c.field, v)}
-                                onCommit={() => commitBlankRow(order)}
-                                commitOnBlur={false}
-                              />
+                              {c.field === 'strukturAdi' ? (
+                                <StrukturCell
+                                  value={row[c.field]}
+                                  options={sectionGroups}
+                                  placeholder=""
+                                  onChange={(v) => updateBlank(order, c.field, v)}
+                                  onCommit={() => commitBlankRow(order)}
+                                  commitOnBlur={false}
+                                />
+                              ) : (
+                                <GridCell
+                                  value={row[c.field]}
+                                  placeholder=""
+                                  onChange={(v) => updateBlank(order, c.field, v)}
+                                  onCommit={() => commitBlankRow(order)}
+                                  commitOnBlur={false}
+                                />
+                              )}
                             </td>
                           ))}
                           {withStatus && (
@@ -947,16 +1043,30 @@ export default function SheetsPage({
                           {columns.map(c => (
                             <td className={c.cls} key={c.field}>
                               {isAdmin ? (
-                                <GridCell
-                                  value={row[c.field]}
-                                  placeholder="—"
-                                  onChange={(v) => setItems(prev => prev.map(x =>
-                                    Number(x.id) === Number(row.id) ? { ...x, [c.field]: v } : x
-                                  ))}
-                                  onCommit={(v) => {
-                                    if (v !== (row[c.field] || '')) patchRow(row.id, { [c.field]: v });
-                                  }}
-                                />
+                                c.field === 'strukturAdi' ? (
+                                  <StrukturCell
+                                    value={row[c.field]}
+                                    options={sectionGroups}
+                                    placeholder="—"
+                                    onChange={(v) => setItems(prev => prev.map(x =>
+                                      Number(x.id) === Number(row.id) ? { ...x, [c.field]: v } : x
+                                    ))}
+                                    onCommit={(v) => {
+                                      if (v !== (row[c.field] || '')) patchRow(row.id, { [c.field]: v });
+                                    }}
+                                  />
+                                ) : (
+                                  <GridCell
+                                    value={row[c.field]}
+                                    placeholder="—"
+                                    onChange={(v) => setItems(prev => prev.map(x =>
+                                      Number(x.id) === Number(row.id) ? { ...x, [c.field]: v } : x
+                                    ))}
+                                    onCommit={(v) => {
+                                      if (v !== (row[c.field] || '')) patchRow(row.id, { [c.field]: v });
+                                    }}
+                                  />
+                                )
                               ) : (
                                 <span className="sheets-cell-text">{row[c.field] || '—'}</span>
                               )}

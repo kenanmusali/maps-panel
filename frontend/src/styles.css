@@ -3134,6 +3134,36 @@ textarea.sheets-cell-input:focus {
   background: var(--surface);
   box-shadow: inset 0 0 0 2px var(--primary);
 }
+
+/* Struktur adı — folder-name autocomplete dropdown */
+.struktur-cell { position: relative; }
+.struktur-suggest {
+  position: absolute;
+  top: 100%; left: 4px; right: 4px;
+  z-index: 30;
+  margin-top: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  box-shadow: var(--sh-lg);
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.struktur-suggest-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.struktur-suggest-opt:hover { background: var(--primary-soft); color: var(--primary-darker); }
 textarea.sheets-cell-input::placeholder { color: var(--text-muted); }
 textarea.sheets-cell-input:disabled { opacity: 0.6; cursor: default; }
 .sheets-struktur {
