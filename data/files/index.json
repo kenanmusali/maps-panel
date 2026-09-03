@@ -560,6 +560,17 @@
       "groupId": 13,
       "status": "renew",
       "uploadedAt": "2026-09-03T12:20:30.911Z"
+    },
+    {
+      "id": 52,
+      "title": "İzləmə və ölçmə cihazlarinin izlənməsi və kalibrasiyasi proseduru",
+      "subtitle": "PR/IMS/İD/03",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 13,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T12:20:32.375Z"
     }
   ],
   "groups": [
