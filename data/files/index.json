@@ -1328,6 +1328,17 @@
       "groupId": 18,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:35:02.583Z"
+    },
+    {
+      "id": 113,
+      "title": "Texnikalarin istismarina nəzarət proseduru",
+      "subtitle": "PR/İD/02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 19,
+      "status": "renew",
+      "uploadedAt": "2026-09-03T07:35:04.244Z"
     }
   ],
   "files": []
