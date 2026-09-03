@@ -906,6 +906,17 @@
       "groupId": 29,
       "status": "notdone",
       "uploadedAt": "2026-09-03T07:33:58.582Z"
+    },
+    {
+      "id": 75,
+      "title": "Normayaratma fəaliyyətinin təşkili və aparılması prosesi",
+      "subtitle": "ALC-İMS-PRC-PMOD-1/3",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 11,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:33:59.980Z"
     }
   ],
   "files": []
