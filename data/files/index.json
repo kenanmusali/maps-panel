@@ -1229,6 +1229,17 @@
       "groupId": 16,
       "status": "renew",
       "uploadedAt": "2026-09-03T07:34:48.003Z"
+    },
+    {
+      "id": 104,
+      "title": "Yüklərin vaqona yüklənməsi prosesi",
+      "subtitle": "PS / İMS /YƏ /02",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 16,
+      "status": "cancelled",
+      "uploadedAt": "2026-09-03T07:34:49.542Z"
     }
   ],
   "files": []
