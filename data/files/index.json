@@ -714,6 +714,17 @@
       "groupId": 13,
       "status": "notdone",
       "uploadedAt": "2026-09-03T12:20:52.242Z"
+    },
+    {
+      "id": 66,
+      "title": "Normayaratma fəaliyyətinin təşkili və aparılması prosesi",
+      "subtitle": "ALC-İMS-PRC-PMOD-1/3",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 14,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T12:20:53.545Z"
     }
   ],
   "groups": [
@@ -768,6 +779,10 @@
     {
       "id": 13,
       "name": "KN və SƏTƏM şöbəsi"
+    },
+    {
+      "id": 14,
+      "name": "Layihələrin idarə olunması departamenti"
     }
   ]
 }
