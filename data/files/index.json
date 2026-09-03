@@ -1431,6 +1431,17 @@
       "groupId": 31,
       "status": "cancelled",
       "uploadedAt": "2026-09-03T07:35:18.044Z"
+    },
+    {
+      "id": 122,
+      "title": "İnteqrasiya edilmiş Menecment Sistemi siyasəti",
+      "subtitle": "İMS/01",
+      "filename": "",
+      "size": 0,
+      "noFile": true,
+      "groupId": 31,
+      "status": "progress",
+      "uploadedAt": "2026-09-03T07:35:19.421Z"
     }
   ],
   "files": []
